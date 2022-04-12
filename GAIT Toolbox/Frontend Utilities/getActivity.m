@@ -414,26 +414,29 @@ else
 end
 transitionsAvg = trans;
 
-
 % add row and column names to transitions table
-nt = size(transitions, 1);
-na = length(activities);
-trans = cell(nt, na+1, na+1);
-for n = 1:nt
-    transition = squeeze(transitions(n,:,:));
-    if ~isnan(sum(sum(transition)))
-        a = cellstr(' ');
-        for i=1:nAct
-            if strcmp(activities(i), 'shuffling') == 1
-                a = [a; {'unclassified'}];
-            else
-                a = [a; cellstr(activities(i))];
+if numberOfValidDays > 0
+    nt = size(transitions, 1);
+    na = length(activities);
+    trans = cell(nt, na+1, na+1);
+    for n = 1:nt
+        transition = squeeze(transitions(n,:,:));
+        if ~isnan(sum(sum(transition)))
+            a = cellstr(' ');
+            for i=1:nAct
+                if strcmp(activities(i), 'shuffling') == 1
+                    a = [a; {'unclassified'}];
+                else
+                    a = [a; cellstr(activities(i))];
+                end
             end
+            trans(n,:,:) = vertcat(a', [a(2:end) num2cell(transition)]);
         end
-        trans(n,:,:) = vertcat(a', [a(2:end) num2cell(transition)]);
     end
+    transitions = trans;
+else
+    transitions = [];
 end
-transitions = trans;
 
 activityStruct.numberOfValidDays       = numberOfValidDays;
 activityStruct.numberOfTestDays        = testDays;
