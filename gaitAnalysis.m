@@ -1,4 +1,5 @@
 classdef gaitAnalysis < matlab.apps.AppBase
+
     % Properties that correspond to app components
     properties (Access = public)
         figure1                       matlab.ui.Figure
@@ -63,7 +64,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
 
         
     properties (Access = private)
-        versionTxt = 'Gait Analysis 3.1 - Interface to the VU-HMS Gait Toolbox';
+        versionTxt = 'Gait Analysis 3.2 - Interface to the VU-HMS Gait Toolbox';
         batchFile = 'GaitBatch.mat';
         timeStamp = 0;
         parmsError = false;
@@ -119,7 +120,6 @@ classdef gaitAnalysis < matlab.apps.AppBase
             unMarkTab (app, app.tab_help);
             unMarkTab (app, app.tab_batch);
         end
-        
         
         function enableAll(app)
             app.BatchMenu.Enable    = app.oldValEnable(1);
@@ -878,7 +878,15 @@ classdef gaitAnalysis < matlab.apps.AppBase
             
             % Choose default command line output for main
             handles.output = hObject;
-               
+            
+            if (ismac) 
+                app.txt_Console.FontName = "PT Mono";
+                app.txt_Help.FontName = "PT Mono";
+            else
+                app.txt_Console.FontName = "Consolas";
+                app.txt_Help.FontName = "Consolas";
+            end
+            
             % Update handles structure
             %delete(app.tab_batch);
             delete(timerfindall);
@@ -1009,8 +1017,11 @@ classdef gaitAnalysis < matlab.apps.AppBase
             if (exist(obj.String, 'file')) 
                 if (exist('edit', 'file'))
                     edit(obj.String);
-                else
+                elseif ispc
                     cmd = ['notepad ' obj.String ' &'];
+                    system(cmd);
+                elseif ismac
+                    cmd = ['open -t "' obj.String '"'];
                     system(cmd);
                 end
             end
@@ -1246,7 +1257,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
                                 filename = cell2mat(data(i,1));
                                 str = sprintf ("%s Processing %s (%d/%d)...", datestr(now(), 13), filename, i, n);
                                 changeTab (app, event, app.tab_console);
-                                toConsole(app, str);                                
+                                toConsole(app, str);
                                 gaitAnalyse(filename, 'class', app, 'overwriteFiles', overwrite_files);
                             end
                         end
