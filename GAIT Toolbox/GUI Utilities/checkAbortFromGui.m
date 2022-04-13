@@ -4,10 +4,10 @@ function [abort] = checkAbortFromGui(printMessage)
 %  control if true is returned, e.g., "if checkAbortFromGui() return; end"
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Dec 2021, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 global guiApp abortPrinted
-abortPrinted
+
 if nargin < 1
     printMessage = isempty(abortPrinted) || ~abortPrinted;
 end

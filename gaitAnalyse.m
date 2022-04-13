@@ -334,6 +334,9 @@ else
         fprintf(idOut, 'Loading aggregated values.\n');
     end
     percentilePWS=NaN; % for backwards compatibility
+    measuresPerDay=NaN; % for backwards compatibility
+    bimodalFitWalkingSpeedPerDay=NaN; % for backwards compatibility
+    percentilePWSPerDay=NaN; % for backwards compatibility
     load (fileNameAggregated);
 end
 
@@ -344,18 +347,22 @@ end
 
 %% show desired aggregated measures
 [measures] = collectDesiredMeasures(params, aggMeasureNames, aggregateInfo);
-nDays = size(aggregateInfoPerDay,1);
-measuresPerDay(nDays+1,1) = measures; % init struct 1:n with empty fields 
-measuresPerDay(nDays+1)   = [];       % delete last struct
-for i=1:nDays
-    if checkAbortFromGui()
-       return;
+if exist('aggregateInfoPerDay', 'var')
+    nDays = size(aggregateInfoPerDay,1);
+    measuresPerDay(nDays+1,1) = measures; % init struct 1:n with empty fields
+    measuresPerDay(nDays+1)   = [];       % delete last struct
+    for i=1:nDays
+        if checkAbortFromGui()
+            return;
+        end
+        if ~isnan(aggregateInfoPerDay(i,1,1))
+            measuresPerDay(i) = collectDesiredMeasures(params, aggMeasureNames, squeeze(aggregateInfoPerDay(i,:,:)));
+        else
+            measuresPerDay(i) = [];
+        end
     end
-    if ~isnan(aggregateInfoPerDay(i,1,1))
-        measuresPerDay(i) = collectDesiredMeasures(params, aggMeasureNames, squeeze(aggregateInfoPerDay(i,:,:)));
-    else
-        measuresPerDay(i) = [];
-    end
+else
+    nDays = 0;
 end
 bmf  = isfield(params, 'calcBimodalFitWalkingSpeed') && params.calcBimodalFitWalkingSpeed;
 ppws = isfield(params, 'calcPercentilePWS') && params.calcPercentilePWS && ~isnan(percentilePWS);
