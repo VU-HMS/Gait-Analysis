@@ -86,7 +86,19 @@ if minValidDaysLying < minValidDaysActivities
 end
 
 %% read classification list
-table = readtable(classificationFile,'delimiter',';','TreatAsEmpty',{'.','NA','N/A'});
+data = fileread(classificationFile);
+if contains(data, ',')
+   data = strrep(data, ',', '.');
+   newFile = [classificationFile '_tmp.csv'];
+   fid = fopen(newFile, 'w+');
+   fwrite(fid, data, 'char');
+   fclose(fid);
+   table = readtable(newFile, 'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+   delete(newFile);
+else
+   table = readtable(classificationFile,'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+end
+clear data
 
 activities = {'walking', 'standing', 'sitting', 'lying', 'cycling', 'stair_walking', 'shuffling'};
 nAct = length(activities);
