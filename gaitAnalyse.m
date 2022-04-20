@@ -71,7 +71,7 @@ function gaitAnalyse(parametersFile, varargin)
 % Last updated: Jan 2022, kaass@fbw.vu.nl
 
 %% process input arguments
-global guiApp
+global guiApp abortPrinted
 
 
 validOverrideLevel = @(x) isnumeric(x) && isscalar(x) && (x >= 0) && (x<=3);
@@ -94,6 +94,7 @@ analyzeTime = p.Results.analyzeTime;
 saveToJSON = p.Results.saveToJSON;
 
 guiApp = [];
+abortPrinted = false;
 isGUI = false;
 idOut = 1; % 1 refers to stdandard output in fprintf
 if (isa(app, 'gaitAnalysis') || isa(app,'gaitAnalysis_exported') || ...
@@ -220,7 +221,7 @@ if params.getPhysicalActivityFromClassification
                             'minSensorWearTime', params.minSensorWearTime, ...
                             'minValidDaysActivities', params.minValidDaysActivities, ...
                             'minValidDaysLying', params.minValidDaysLying);    
-    if checkAbortFromGui(false)
+    if checkAbortFromGui()
         return;
     end                    
     printActivities(actStruct, idOut, false);
@@ -271,6 +272,18 @@ if ~exist(fileNameMeasures, 'file') || (overwriteFiles >= 2)
     if checkAbortFromGui() 
         return;
     end
+    startTime = locomotionEpisodes(1).absoluteStartTime;
+    startDay = datetime(startTime,'ConvertFrom','datenum','Format','yyyy-MM-dd HH:mm:ss');
+    j=0;
+    for i=1:length(locomotionMeasures)
+        startEpisode = startDay + days(locomotionMeasures(i).relativeStartTime);
+        if (i>1) && (locomotionMeasures(i).relativeStartTime == locomotionMeasures(i-1).relativeStartTime)
+            j=j+1;
+        else
+            j=0;
+        end
+        locomotionMeasures(i).absoluteStartTimeEpoch = datenum(startEpisode + seconds(j*epochLength));
+    end
     fprintf(idOut, 'Time to calculate locomotion measures = %.2f seconds.\n', toc(t));
     save (fileNameMeasures, 'locomotionMeasures', 'fileInfo', 'epochLength', 'legLength');
     overwriteFiles = 1; % if measures have been recalculated, aggregated values need to be recollected also
@@ -280,7 +293,6 @@ else
     end
     load (fileNameMeasures, 'locomotionMeasures', 'legLength');
 end
-
 
 %% load or calculate the aggregated values
 if length(locomotionMeasures) < 50
@@ -301,7 +313,9 @@ if ~exist(fileNameAggregated, 'file') || (overwriteFiles >= 1)
     if (verbosityLevel > 0)
         fprintf(idOut, 'Collect aggregated values...\n');
     end
-    [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS, nEpochsUsed] = collectAggregatedValues (locomotionMeasures, params, verbosityLevel, idOut);
+    [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS, nEpochsUsed, ...
+     aggregateInfoPerDay, bimodalFitWalkingSpeedPerDay, percentilePWSPerDay] ...
+     = collectAggregatedValues (locomotionMeasures, params, verbosityLevel, idOut);
     if checkAbortFromGui() 
         return;
     end
@@ -312,12 +326,17 @@ if ~exist(fileNameAggregated, 'file') || (overwriteFiles >= 1)
         preferredWalkingSpeed = NaN;
     end
     skipStartSeconds = params.skipStartSeconds;
-    save (fileNameAggregated, 'aggregateInfo', 'aggMeasureNames', 'bimodalFitWalkingSpeed', 'percentilePWS', 'preferredWalkingSpeed', 'percentiles', 'skipStartSeconds', 'nEpochsUsed')
+    save (fileNameAggregated, 'aggregateInfo', 'aggMeasureNames', 'bimodalFitWalkingSpeed',...
+          'percentilePWS', 'preferredWalkingSpeed', 'percentiles', 'skipStartSeconds', 'nEpochsUsed', ...
+          'aggregateInfoPerDay', 'bimodalFitWalkingSpeedPerDay', 'percentilePWSPerDay');
 else    
     if (verbosityLevel > 0)
         fprintf(idOut, 'Loading aggregated values.\n');
     end
     percentilePWS=NaN; % for backwards compatibility
+    measuresPerDay=NaN; % for backwards compatibility
+    bimodalFitWalkingSpeedPerDay=NaN; % for backwards compatibility
+    percentilePWSPerDay=NaN; % for backwards compatibility
     load (fileNameAggregated);
 end
 
@@ -328,6 +347,23 @@ end
 
 %% show desired aggregated measures
 [measures] = collectDesiredMeasures(params, aggMeasureNames, aggregateInfo);
+if exist('aggregateInfoPerDay', 'var')
+    nDays = size(aggregateInfoPerDay,1);
+    measuresPerDay(nDays+1,1) = measures; % init struct 1:n with empty fields
+    measuresPerDay(nDays+1)   = [];       % delete last struct
+    for i=1:nDays
+        if checkAbortFromGui()
+            return;
+        end
+        if ~isnan(aggregateInfoPerDay(i,1,1))
+            measuresPerDay(i) = collectDesiredMeasures(params, aggMeasureNames, squeeze(aggregateInfoPerDay(i,:,:)));
+        else
+            measuresPerDay(i) = [];
+        end
+    end
+else
+    nDays = 0;
+end
 bmf  = isfield(params, 'calcBimodalFitWalkingSpeed') && params.calcBimodalFitWalkingSpeed;
 ppws = isfield(params, 'calcPercentilePWS') && params.calcPercentilePWS && ~isnan(percentilePWS);
 
@@ -347,20 +383,20 @@ if isempty(measures) && ~bmf && ~ppws
 else    
     % save to .mat
     if ~isempty(measures)
-        save(fileNameResults, 'measures');
+        save(fileNameResults, 'measures', 'measuresPerDay');
         if (bmf)
-            save(fileNameResults, 'bimodalFitWalkingSpeed', '-append');
+            save(fileNameResults, 'bimodalFitWalkingSpeed', 'bimodalFitWalkingSpeedPerDay', '-append');
         end
         if (ppws)
-            save(fileNameResults, 'percentilePWS', '-append');
+            save(fileNameResults, 'percentilePWS', 'percentilePWSPerDay', '-append');
         end
     else
         if (bmf && ppws)
-            save(fileNameResults, 'bimodalFitWalkingSpeed', 'percentilePWS');
+            save(fileNameResults, 'bimodalFitWalkingSpeed', 'percentilePWS', 'bimodalFitWalkingSpeedPerDay', 'percentilePWSPerDay');
         elseif bmf
-            save(fileNameResults, 'bimodalFitWalkingSpeed');   
+            save(fileNameResults, 'bimodalFitWalkingSpeed', 'bimodalFitWalkingSpeedPerDay');   
         elseif (ppws)
-            save(fileNameResults, 'percentilePWS');
+            save(fileNameResults, 'percentilePWS', 'percentilePWSPerDay');
         end
     end
         
@@ -375,7 +411,7 @@ else
             fprintf(idOut, ['   ' str]);
         end
     end
-
+    
     if bmf
         fprintf(idOut,'\nBimodal Fit Walking Speed:\n');
         fprintf(fid, '\n');
@@ -396,17 +432,61 @@ else
         str = sprintf('\n%25s: % .2f\n', 'PercentilePWS', percentilePWS);
         fprintf(fid, str);
     end
-
+    
+    % also save rsults for individual test days to the .txt file
+    for n=1:nDays
+        fprintf(fid, "\nDay %d: ", n);
+        if isempty(measuresPerDay(n)) || isempty(measuresPerDay(n).WalkingSpeed)
+            fprintf(fid, "not a valid day (too few locomotion epochs)\n");
+        else
+            fprintf(fid, '\n');
+            for i=1:numel(fn)
+                str = sprintf('%25s: % .3f % .3f % .3f\n', char(fn(i)),...
+                    measuresPerDay(n).(fn{i})(1),...
+                    measuresPerDay(n).(fn{i})(2),...
+                    measuresPerDay(n).(fn{i})(3));
+                fprintf(fid, ['   ' str]);
+            end
+            
+            if bmf
+                fprintf(fid, '\n');
+                str = sprintf('%25s: % .3f\n', 'Ashman_D', bimodalFitWalkingSpeedPerDay(n).Ashman_D);
+                fprintf(fid, str);
+                str = sprintf('%25s: % .3f % .3f\n', 'PeakDensity',...
+                    bimodalFitWalkingSpeedPerDay(n).peakDensity(1), ...
+                    bimodalFitWalkingSpeedPerDay(n).peakDensity(2));
+                fprintf(fid, str);
+                str = sprintf('%25s: % .3f % .3f\n', 'PeakSpeed', ...
+                    bimodalFitWalkingSpeedPerDay(n).peakSpeed(1), ...
+                    bimodalFitWalkingSpeedPerDay(n).peakSpeed(2));
+                fprintf(fid, str);
+            end
+            
+            if ppws
+                str = sprintf('\n%25s: % .2f\n', 'PercentilePWS', percentilePWSPerDay(n));
+                fprintf(fid, ['    ' str]);
+            end
+        end
+    end
+    
     fclose(fid);
       
     % save to json
     if saveToJSON
        fileNameResultsJSON = [filepath '/' name '_GA_Results' '.json'];
-       toJSON(fileNameResultsJSON, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws)
+       toJSON(fileNameResultsJSON, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws);
+       for n=1:nDays
+          nStr = sprintf ('%d', n);
+          if ~isempty(measuresPerDay(n)) && ~isempty(measuresPerDay(n).WalkingSpeed)
+              fileNameResultsJSON = [filepath '/' name '_GA_Results_' nStr '.json'];
+              toJSON(fileNameResultsJSON, measuresPerDay(n), legLength, ...
+                     bimodalFitWalkingSpeedPerDay(n), percentiles, percentilePWSPerDay(n), bmf, ppws);
+          end
+       end
     end
     
     if (verbosityLevel > 0)
-        fprintf(idOut,'\nAbove measures can also be found in %s.\n', fileNameResultsTxt);
+        fprintf(idOut,'\nDetailed results can be found in %s.\n', fileNameResultsTxt);
     end
 end
 
