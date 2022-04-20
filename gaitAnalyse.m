@@ -68,7 +68,7 @@ function gaitAnalyse(parametersFile, varargin)
 %                  print statements should go
 
 %% 2021, kaass@fbw.vu.nl
-% Last updated: Jan 2022, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 global guiApp abortPrinted
@@ -476,9 +476,9 @@ else
        fileNameResultsJSON = [filepath '/' name '_GA_Results' '.json'];
        toJSON(fileNameResultsJSON, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws);
        for n=1:nDays
-          nStr = sprintf ('%d', n);
+          nStr = sprintf ('%02d', n);
           if ~isempty(measuresPerDay(n)) && ~isempty(measuresPerDay(n).WalkingSpeed)
-              fileNameResultsJSON = [filepath '/' name '_GA_Results_' nStr '.json'];
+              fileNameResultsJSON = [filepath '/' name '_GA_Results_Day' nStr '.json'];
               toJSON(fileNameResultsJSON, measuresPerDay(n), legLength, ...
                      bimodalFitWalkingSpeedPerDay(n), percentiles, percentilePWSPerDay(n), bmf, ppws);
           end
