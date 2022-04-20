@@ -41,7 +41,7 @@ function activityStruct = getActivity(classificationFile, varargin)
 %
 %
 %% 2022, kaass@fbw.vu.nl
-% Last updated: March 2022, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 
 %% init / settings

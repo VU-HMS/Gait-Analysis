@@ -6,7 +6,7 @@ function [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS,
 %           = collectAggregatedValues(locomotionMeasures, params, verbosityLevel)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Dec 2021, kaass@fbw.vu.nl
+% Last updated: April 2021, kaass@fbw.vu.nl
 
 %% initialize output variables
 aggMeasureNames=[];

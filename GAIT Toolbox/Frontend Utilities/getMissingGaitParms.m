@@ -3,7 +3,7 @@ function [params, error] = getMissingGaitParms(old_params)
 %  help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Dec 2021, kaass@fbw.vu.nl
+% Last updated: April 2021, kaass@fbw.vu.nl
 
 global guiApp
 
