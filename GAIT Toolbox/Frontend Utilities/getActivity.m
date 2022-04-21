@@ -41,7 +41,7 @@ function activityStruct = getActivity(classificationFile, varargin)
 %
 %
 %% 2022, kaass@fbw.vu.nl
-% Last updated: March 2022, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 
 %% init / settings
@@ -86,7 +86,19 @@ if minValidDaysLying < minValidDaysActivities
 end
 
 %% read classification list
-table = readtable(classificationFile,'delimiter',';','TreatAsEmpty',{'.','NA','N/A'});
+data = fileread(classificationFile);
+if contains(data, ',')
+   data = strrep(data, ',', '.');
+   newFile = [classificationFile '_tmp.csv'];
+   fid = fopen(newFile, 'w+');
+   fwrite(fid, data, 'char');
+   fclose(fid);
+   table = readtable(newFile, 'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+   delete(newFile);
+else
+   table = readtable(classificationFile,'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+end
+clear data
 
 activities = {'walking', 'standing', 'sitting', 'lying', 'cycling', 'stair_walking', 'shuffling'};
 nAct = length(activities);
@@ -416,22 +428,26 @@ transitionsAvg = trans;
 
 
 % add row and column names to transitions table
-nt = size(transitions, 1);
-na = length(activities);
-trans = cell(nt, na+1, na+1);
-for n = 1:nt
-    transition = squeeze(transitions(n,:,:));
-    if ~isnan(sum(sum(transition)))
-        a = cellstr(' ');
-        for i=1:nAct
-            if strcmp(activities(i), 'shuffling') == 1
-                a = [a; {'unclassified'}];
-            else
-                a = [a; cellstr(activities(i))];
+if numberOfValidDays > 0
+    nt = size(transitions, 1);
+    na = length(activities);
+    trans = cell(nt, na+1, na+1);
+    for n = 1:nt
+        transition = squeeze(transitions(n,:,:));
+        if ~isnan(sum(sum(transition)))
+            a = cellstr(' ');
+            for i=1:nAct
+                if strcmp(activities(i), 'shuffling') == 1
+                    a = [a; {'unclassified'}];
+                else
+                    a = [a; cellstr(activities(i))];
+                end
             end
+            trans(n,:,:) = vertcat(a', [a(2:end) num2cell(transition)]);
         end
-        trans(n,:,:) = vertcat(a', [a(2:end) num2cell(transition)]);
     end
+else
+    trans = [];
 end
 transitions = trans;
 

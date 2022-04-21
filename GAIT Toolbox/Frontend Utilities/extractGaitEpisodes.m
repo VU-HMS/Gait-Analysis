@@ -20,7 +20,7 @@ function [locomotionEpisodes, fileInfo] = extractGaitEpisodes(fileNameClassList,
 %   fileInfo (struct): Information about the raw data
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Jan 2022, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 %% set to true if OMX_readFile() version is 2019 or up
 newOMXReadFileVersion = true; 
@@ -54,7 +54,19 @@ else
 end
 
 %% read classification list
-table = readtable(fileNameClassList,'delimiter',';','TreatAsEmpty',{'.','NA','N/A'});
+data = fileread(fileNameClassList);
+if contains(data, ',')
+   data = strrep(data, ',', '.');
+   newFile = [fileNameClassList '_tmp.csv'];
+   fid = fopen(newFile, 'w+');
+   fwrite(fid, data, 'char');
+   fclose(fid);
+   table = readtable(newFile, 'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+   delete(newFile);
+else
+   table = readtable(fileNameClassList,'delimiter', ';', 'TreatAsEmpty',{'.','NA','N/A'});
+end
+clear data
 
 %% convert start datetime into datenum
 startMeasurement = datenum(table.start(1,1));

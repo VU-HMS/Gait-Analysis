@@ -3,7 +3,7 @@ function [params, error] = readGaitParms(file, silent, app)
 %  help utility for gaitAnalyse and gaitAnalysis (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: March 2022, kaass@fbw.vu.nl
+% Last updated: April 2022, kaass@fbw.vu.nl
 
 global guiApp
 
