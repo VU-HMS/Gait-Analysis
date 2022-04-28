@@ -272,7 +272,7 @@ if ~exist(fileNameMeasures, 'file') || (overwriteFiles >= 2)
     if checkAbortFromGui() 
         return;
     end
-    startTime = locomotionEpisodes(1).absoluteStartTime;
+    startTime = locomotionEpisodes(1).absoluteStartTime - locomotionEpisodes(1).relativeStartTime;
     startDay = datetime(startTime,'ConvertFrom','datenum','Format','yyyy-MM-dd HH:mm:ss');
     j=0;
     for i=1:length(locomotionMeasures)

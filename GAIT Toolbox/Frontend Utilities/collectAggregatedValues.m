@@ -140,12 +140,12 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
         date = datetime(locomotionMeasures(i).absoluteStartTimeEpoch,'ConvertFrom','datenum');
         day  = datetime([date.Year, date.Month, date.Day] ,'InputFormat','yyyy-MM-dd');
         if i==1
-            testDays(1,1) = day;
+            testDays(1) = day;
             idxDays(1,1)  = 1;
-        elseif day ~= testDays(j,1)
+        elseif day ~= testDays(j)
             idxDays(j,2) = i-1;
             j=j+1;
-            testDays(j,1) = day;
+            testDays(j) = day;
             idxDays(j,1) = i;
         end
         if (i==n)
@@ -157,7 +157,6 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
             end
         end
     end
-    
     n = length(testDays);
     aggregateInfoPerDay = NaN(n, nMeasures, nAggregators);
     bimodalFitWalkingSpeedPerDay(n,1) =  struct('Ashman_D',[],'peakDensity',[], 'peakSpeed', []);
