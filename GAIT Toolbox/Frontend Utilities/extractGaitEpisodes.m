@@ -20,10 +20,15 @@ function [locomotionEpisodes, fileInfo] = extractGaitEpisodes(fileNameClassList,
 %   fileInfo (struct): Information about the raw data
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: July 2022, kaass@fbw.vu.nl
 
 %% set to true if OMX_readFile() version is 2019 or up
 newOMXReadFileVersion = true; 
+
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
 %% process input arguments
 global guiApp
@@ -54,6 +59,7 @@ else
 end
 
 %% read classification list
+prLog("Read the classification file.\n", fcnName);
 data = fileread(fileNameClassList);
 if contains(data, ',')
    data = strrep(data, ',', '.');
@@ -93,6 +99,7 @@ durationWalking = table.duration(idx);
 days2sec = 24*60*60;
     
 %% extract the episodes
+prLog("Extract the locomotion episodes.\n", fcnName);
 episodeStruct = struct('signal', [], 'timestamps', [],...
                        'signalGyr', [], 'timestampsGyr', [],...
                        'signalMag', [], 'timestampsMag', [],...
@@ -134,7 +141,6 @@ else
         end
                        
         % determine start and end sample
-        
         startSample = datenum(startWalking(iWalk));
         endSample = startSample + datenum(0,0,0,0,0,durationWalking(iWalk)); 
 
@@ -144,23 +150,38 @@ else
         nSecAfter    = min(stopTime-endSample, oneSec);
         episodeStart = startSample - nSecBefore;
         episodeEnd   = endSample + nSecAfter;
+        if (episodeStart > episodeEnd)
+            str = sprintf("Time stamp mismatch; classification file and data file probably don't agree.\n");
+            fprintf (idOut, str); 
+            prLog (str, fcnName);
+            locomotionEpisodes = [];
+            return;
+        end
+        
         % get signal
         try
             data = OMX_readFile(fileNameMeasurementData,'modality', modality,...
                                 'startTime', episodeStart, 'stopTime', episodeEnd,...
                                 'packetInfo', fileInfo.packetInfo);
         catch ME % if that does not work, exclude MAG
-            fprintf (idOut, "Warning: reading OMX file failed with error '%s'.\n", ME.message);
+            str = sprintf ("Warning: reading OMX file failed with error '%s'.\n", ME.message);
+            fprintf (idOut, str);
+            prLog (str, fcnName);
             if checkAbortFromGui() 
                 return;
             end
             if (useMag)
                 try
-                    fprintf (idOut, "Trying again without magnetic data...\n"); 
+                    str = sprintf("Trying again without magnetic data...\n");
+                    fprintf (idOut, str); 
+                    prLog (str, fcnName);
                     data = OMX_readFile(fileNameMeasurementData,'modality', [useAcc useGyr 0], 'startTime',episodeStart,...
                                         'stopTime', episodeEnd, 'packetInfo', fileInfo.packetInfo);
                     data.MAG = [];                
                 catch
+                    str = sprintf("Failed again.\n");
+                    fprintf (idOut, str); 
+                    prLog (str, fcnName);
                     data.ACC = [];
                     data.GYR = [];
                     data.MAG = [];
@@ -193,7 +214,9 @@ else
             [ts, s, fs, error, errorStr] = resampleData(data.ACC(idx,1), signal);           
             if (error)
                 % episode without proper acceleration data is useless
-                fprintf(idOut, '%s; episode %d skipped.\n', errorStr, iWalk);
+                str = sprintf ('%s; episode %d skipped.\n', errorStr, iWalk);
+                fprintf(idOut, str);
+                prLog(str, fcnName);
                 locomotionEpisodes(n) = [];
                 n = n-1;
                 continue;
@@ -214,7 +237,9 @@ else
             idx = find(data.GYR(:,1)>=startSample-epsilon, 1) : find(data.GYR(:,1)>endSample+epsilon, 1) -1;
             [ts, s, fs, error, errorStr] = resampleData(data.GYR(idx,1), data.GYR(idx,2:4));
             if (error)
-                fprintf(idOut, '%s; gyroscope data of episode %d skipped.\n', errorStr, iWalk);
+                str = sprintf ('%s; gyroscope data of episode %d skipped.\n', errorStr, iWalk);
+                fprintf(idOut, str);
+                prLog(str, fcnName);
             else
                 locomotionEpisodes(n).timestampsGyr = ts;
                 locomotionEpisodes(n).signalGyr     = s;
@@ -226,7 +251,9 @@ else
             idx = find(data.MAG(:,1)>=startSample-epsilon, 1) : find(data.MAG(:,1)>endSample+epsilon, 1) -1;
             [ts, s, fs, error, errorStr] = resampleData(data.MAG(idx,1), data.MAG(idx,2:4));
             if (error)
-                fprintf(idOut, '%s; magnetic data of episode %d skipped.\n', errorStr, iWalk);
+                str = sprintf ('%s; magnetic data of episode %d skipped.\n', errorStr, iWalk);
+                fprintf(idOut, str);
+                prLog(str, fcnName);
             else
                 locomotionEpisodes(n).timestampsMag = ts;
                 locomotionEpisodes(n).signalMag     = s;
@@ -238,10 +265,18 @@ else
         locomotionEpisodes(n).relativeStartTime = startSample-startMeasurement;
         locomotionEpisodes(n).absoluteStartTime = startSample;
            
+        if (verbosityLevel > 1) || (iWalk==len) || (mod(iWalk,100)==0)
+            str = sprintf ("Extracted %d out of %d episodes.\n", iWalk, length(startWalking));
+            prLog(str, fcnName);
+        end
+
     end % for iWalk = 1:len
  
     
 end %% if isempty(startWalking)
+
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end
 

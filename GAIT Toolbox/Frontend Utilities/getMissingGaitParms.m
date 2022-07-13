@@ -3,9 +3,14 @@ function [params, error] = getMissingGaitParms(old_params)
 %  help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
 
 global guiApp
+
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
 if exist('guiApp', 'var') && ~isempty(guiApp) && ~isnumeric(guiApp)
     idOut = guiApp;
@@ -27,11 +32,15 @@ if ~isfield(params, 'classFile')
     if ask1
         [file,dir] = uigetfile('.csv', 'Select classification file');
         if ~file
-            fprintf (idOut, '\n*** Error: No classification file (*.csv) selected. ***\n');
+            str = sprintf('\n*** Error: No classification file (*.csv) selected. ***\n');
+            fprintf (idOut, str);
+            prLog (str, fcnName);
             return;
         end
     else
-        fprintf (idOut, '\n*** Error: No classification file (*.csv) specified. ***\n');
+        str = sprintf('\n*** Error: No classification file (*.csv) specified. ***\n');
+        fprintf (idOut, str);
+        prLog (str, fcnName);
         return;
     end
     params.classFile = [dir file];
@@ -42,11 +51,15 @@ if ~isfield(params, 'accFile')
     if ask1
         [file, dir] = uigetfile('*.3ac;*.omx', 'Select raw measurement file');
         if ~file
-            fprintf (idOut, '\n*** Error: No raw measurement file (*.3ac or *.omx) selected. ***\n');
+            str = sprintf('\n*** Error: No raw measurement file (*.3ac or *.omx) selected. ***\n');
+            fprintf (idOut, str);
+            prLog (str, fcnName);           
             return;
         end
     else    
-        fprintf (idOut, '\n*** Error: No raw measurement file (*.3ac or *.omx) specified. ***\n');
+        str = sprintf('\n*** Error: No raw measurement file (*.3ac or *.omx) specified. ***\n');
+        fprintf (idOut, str);
+        prLog (str, fcnName);
         return;
     end
     params.accFile = [dir file];
@@ -58,7 +71,9 @@ if ~isfield(params, 'legLength')
         params.legLength = input('Leg length (in meters)? ');
     end
     if ~isfield(params, 'legLength') || isempty(params.legLength)
-        fprintf(idOut, '\n*** Error: No leg length given! ***\n');
+        str = sprintf('\n*** Error: No leg length given! ***\n');
+        fprintf (idOut, str);
+        prLog (str, fcnName);
         return;
     end
 end
@@ -75,7 +90,9 @@ end
 
 if isfield(params, 'percentiles')
     if size(params.percentiles) ~= 3
-        fprintf(idOut, '\n*** Error: Percentiles should be an array of length 3! ***\n');
+        str = sprintf('\n*** Error: Percentiles should be an array of length 3! ***\n');
+        fprintf (idOut, str);
+        prLog (str, fcnName);        
         return;
     end   
 else
@@ -100,6 +117,8 @@ if ~isnumeric(idOut)
     idOut.pError = false;
 end
 
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end
 

@@ -8,7 +8,7 @@ function printf(varargin)
 global guiApp; 
 
 
-if exist('guiApp', 'var') && ~isempty(guiApp) && ~isnumeric(guiApp)   
+if exist('guiApp', 'var') && isvalid(guiApp) && ~isempty(guiApp) && ~isnumeric(guiApp)   
    fprintf (guiApp, varargin{:});
 else
    fprintf (1, varargin{:});

@@ -64,7 +64,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
 
         
     properties (Access = private)
-        versionTxt = 'Gait Analysis 3.2 - Interface to the VU-HMS Gait Toolbox';
+        versionTxt = 'Gait Analysis 3.3 - Interface to the VU-HMS Gait Toolbox';
         batchFile = 'GaitBatch.mat';
         timeStamp = 0;
         parmsError = false;
@@ -558,12 +558,28 @@ classdef gaitAnalysis < matlab.apps.AppBase
                 err = true;
             elseif exist (params.classFile, 'file') ~= 2
                 if ~silent
-                    fprintf (app, 'Classification file (%s) as specified in parameter file does not exist.\n', params.classFile);
+                    fprintf (app, 'Classification file %s as specified in parameter file does not exist.\n', params.classFile);
                 end
                 err = true;
             elseif exist (params.accFile, 'file') ~= 2
                 if ~silent
-                    fprintf (app, 'Raw measurement file (%s) as specified in parameter file does not exist.\n', params.accFile);
+                    fprintf (app, 'Raw measurement file %s as specified in parameter file does not exist.\n', params.accFile);
+                end
+                err = true;
+            elseif ~isClassFile(app, params.classFile)
+                if ~silent
+                    fprintf(app, 'File %s is not a valid classification file.\n', params.classFile);
+                    if isAccFile(app, params.classFile)
+                        fprintf(app, 'It looks like a raw measurement file though...\n');
+                    end
+                end
+                err = true;
+            elseif ~isAccFile(app, params.accFile)
+                if ~silent
+                    fprintf(app, 'File %s is not a valid meausurement file.\n', params.accFile);
+                    if isClassFile(app, params.accFile)
+                        fprintf(app, 'It looks like a classification file though...\n');
+                    end
                 end
                 err = true;
             end
@@ -671,7 +687,23 @@ classdef gaitAnalysis < matlab.apps.AppBase
             warning (prevWarningState.state, prevWarningState.identifier);
         end
         
-   
+        
+        function bool = isAccFile(~, file)
+            fid = fopen (file);
+            str = fread (fid, 80, 'uint8=>char')';
+            fclose(fid);
+            bool = ((contains(str,'DP7') || contains(str,'MM')) && ...
+                   contains(str,'T0') && contains(str, 'T1'));
+        end
+                
+        
+        function bool = isClassFile(~, file)
+            fid = fopen (file);
+            str = fread (fid, 40, 'uint8=>char')';
+            fclose(fid);
+            bool = (contains(str, 'start') && contains(str, 'duration'));
+        end
+        
         
         function check(app, ~, event)           
             [hObject, ~, handles] = convertToGUIDECallbackArguments(app);                
@@ -787,10 +819,16 @@ classdef gaitAnalysis < matlab.apps.AppBase
             string = get (handles.txt_Console, 'String');
             if isempty(string)
                 string = {str};
-            else
+            else  
                 %string = flip(string);
-                if app.pReplace
-                    string{end} = str;
+                if app.pReplace 
+                    s1 = strsplit(string{end});
+                    s2 = strsplit(str);
+                    if strcmp(s1{1},s2{1})
+                        string{end} = str;
+                    else
+                        string{end+1} = str;
+                    end
                 else
                     string{end+1} = str;
                 end
@@ -1020,7 +1058,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
                 elseif ispc
                     cmd = ['notepad ' obj.String ' &'];
                     system(cmd);
-                elseif ismac
+                else
                     cmd = ['open -t "' obj.String '"'];
                     system(cmd);
                 end

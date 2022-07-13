@@ -3,10 +3,15 @@ function [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, leg
 % help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Dec 2021, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 global guiApp
+
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
 if (nargin < 3)
     verbosityLevel = 1;
@@ -31,15 +36,18 @@ epoch = 1;
 ndiscard = 0;
 
 for i=1:nEpisodes
-    
+       
     if checkAbortFromGui() 
         return;
     end
      
     if isempty(locomotionEpisodes(i).signal)
         ndiscard = ndiscard+1;
+        str = sprintf ("Discarded sample %d (tot=%d), duration: %f (%f), len (%d) < winSize (%d), sample rate: %f\n", ...
+                       n, ndiscard, episodeLength/sampleRate, seconds, episodeLength, winSize, sampleRate);
+        prLog(str, fcnName);
         if (verbosityLevel > 1)
-           fprintf (1, "Discarded sample %d (tot=%d), duration: %f (%f), len (%d) < winSize (%d), sample rate: %f\n", n, ndiscard, episodeLength/sampleRate, seconds, episodeLength, winSize, sampleRate);
+           fprintf (idOut, str); 
         end
     else
         episodeLength = length(locomotionEpisodes(i).signal);
@@ -51,13 +59,22 @@ for i=1:nEpisodes
             nEpochs = floor(episodeLength/winSize);
             startEpochs = 1 + floor((episodeLength-nEpochs*winSize)/2);
             for j=1:nEpochs
+                if (verbosityLevel > 1)
+                    if (nEpochs > 1)
+                        str = sprintf ("Processing episode %d,%d.\n", i,j);
+                    else
+                        str = sprintf ("Processing episode %d.\n", i);
+                    end
+                    prLog(str, fcnName);
+                end
                 first = startEpochs + (j-1)*winSize;
                 last  = startEpochs + j*winSize -1;
                 [locomotionMeasures(epoch).Measures] = ...
                       GaitQualityFromTrunkAccelerations(...
                           locomotionEpisodes(i).signal(first:last,:),...
                           sampleRate, legLength,...
-                          'analyzeTime', analyzeTime); 
+                          'analyzeTime', analyzeTime, ...
+                          'verbosityLevel', verbosityLevel); 
                 startTimeRel = locomotionEpisodes(i).relativeStartTime;
                 locomotionMeasures(epoch).relativeStartTime  = startTimeRel;
                 locomotionMeasures(epoch).absoluteStartIndex = first + round(startTimeRel*24*60*60*sampleRate);
@@ -78,8 +95,15 @@ for i=1:nEpisodes
             fprintf(idOut, 'Completed episodes = %5d/%d.\n', i, nEpisodes);
         end
     end
+    if (verbosityLevel > 1) || (i==nEpisodes) || (mod(i,100)==0)
+        str = sprintf ("Completed %d out of %d episodes.\n", i, nEpisodes);
+        prLog(str, fcnName);
+    end
     
 end
+
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end
 

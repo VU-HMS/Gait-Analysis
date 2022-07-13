@@ -3,10 +3,15 @@ function [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS,
           = collectAggregatedValues(locomotionMeasures, params, verbosityLevel, app)
 %% function [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS, nEpochsUsed...
 %           aggregateInfoPerDay, bimodalFitWalkingSpeedPerDay, percentilePWSPerDay]...
-%           = collectAggregatedValues(locomotionMeasures, params, verbosityLevel)
+%           = collectAggregatedValues(locomotionMeasures, params, verbosityLevel)\n
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
+
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
 %% initialize output variables
 aggMeasureNames=[];
@@ -16,7 +21,6 @@ nEpochsUsed=[];
 aggregateInfoPerDay=[];
 bimodalFitWalkingSpeedPerDay=struct('Ashman_D',[],'peakDensity',[], 'peakSpeed', []);
 percentilePWSPerDay=[];
-
 
 
 %% process input arguments
@@ -32,16 +36,20 @@ end
 %% collect aggregate measures and other relevant data
 %  to add a measure that can be calculated as a function of available measures do something like this:
 %  LocomotionMeasures = AddFieldsInArrayOfStructures(LocomotionMeasures,{'AddedMeasures','LyapunovPerStrideRN'},@rdivide,{'Measures','LyapunovRN'},{'Measures','StrideFrequency'});
+prLog("Make the measures structure.\n", fcnName);
 measuresStruct = ArrayOfStructures2StructureOfArraysRC(locomotionMeasures);
 
 
 %% set parameters
+prLog("Set parameter values.\n", fcnName);
 if isfield(params, 'percentiles')
     percentiles = params.percentiles;
 else
     percentiles = [10 50 90];
+    str = 'Using default percentiles [10 50 90]\n';
+    prLog (str, fcnName);
     if (verbosity_level > 1)
-        fprintf(app, 'Using default percentiles [10 50 90]\n');
+        fprintf(app, str);
     end 
 end
 
@@ -50,9 +58,11 @@ if isfield(params, 'skipStartSeconds')
     nSecondsSkipBegin = params.skipStartSeconds;
 else
     nSecondsSkipBegin = 0;
+    str = 'Not skipping any data at start of measurement (use ' + ...
+          '\"Skip seconds at start of measurement\" in parameter file to overrule).\n';
+    prLog (str, fcnName);
     if (verbosityLevel > 1)
-        fprintf(app, 'Not skipping any data at start of measurement (use ');
-        fprintf(app, '\"Skip seconds at start of measurement\" in parameter file to overrule).\n');
+        fprintf(app, str);
     end
 end
 
@@ -60,7 +70,10 @@ if isfield(locomotionMeasures, 'sampleRate')
      fs = mean([locomotionMeasures.sampleRate]); % works for OMX
 else
      fs = 100;
-     fprintf(app, 'Using default sample rate of %d Hz.\n', fs);
+     str = sprintf ('Using default sample rate of %d Hz.\n', fs);
+     prLog (str, fcnName);
+     fprintf(app, str);
+
 end
     
 aggregateFunction   = @nanpercentiles_atleastNepisodes;
@@ -83,6 +96,7 @@ if checkAbortFromGui()
 end
 
 %% Get the aggregate values and field names
+prLog("Get the aggregated values.\n", fcnName);
 [aggValues,aggMeasureNames] = GetMultipleAggValues(measuresStruct,flags,{},aggregateFunction,nAggregators,functionArguments);
 aggregateInfo(1:size(aggMeasureNames,1),:) = nan;
 aggregateInfo(:,:) = aggValues;
@@ -90,16 +104,22 @@ aggregateInfo(:,:) = aggValues;
 
 %% some info
 nEpochsUsed = sum(flags);
+nSamplesUsed  = sum(flags .* measuresStruct.nSamples);
+str1 = sprintf ('Number of %ds epochs used: %d.\n', params.epochLength, nEpochsUsed);
+str2 = sprintf ('Number of samples used:  %d.\n', nSamplesUsed);
+prLog(str1, fcnName);
+prLog(str2, fcnName);
 if (verbosityLevel > 1)
-    nSamplesUsed  = sum(flags .* measuresStruct.nSamples);
-    fprintf(app, 'Number of %ds epochs used: %d\n', params.epochLength, nEpochsUsed);
-    fprintf(app, 'Number of samples used:  %d\n', nSamplesUsed);
+    fprintf(app, str1);
+    fprintf(app, str2);
 end
 
 
-%% calculate Ashman's D mean walking speed and bimodal distribution fit
+%% calculate Ashman's D, the bimodal distribution fit, and the peercentile 
+%  of the the preferred walking speed
 speed = measuresStruct.Measures.WalkingSpeedMean(flags)';
 if length(speed) >= functionArguments.N
+    prLog("Calculate Ashman's D and the bimodal distribution fit.\n", fcnName);
     gm =  fitgmdist(speed, 2, 'Start', 'plus', 'Replicates', 100, 'RegularizationValue', 0.0001, 'Options', statset('MaxIter', 1000));
     % Determine Ashman's D according to: Aspeshman, K. M., Bird, C. M., & Zepf, S. E. (1994). Detecting bimodality in astronomical datasets. arXiv preprint astro-ph/9408030.
     bimodalFitWalkingSpeed.Ashman_D = abs(diff(gm.mu)) ./ sqrt(sum(gm.Sigma)./2); % difference in means divided by pooled SD - essentially a z-test... Note that sigma = SD^2
@@ -109,6 +129,7 @@ if length(speed) >= functionArguments.N
     bimodalFitWalkingSpeed.gmfit = gm;
     
     % determine P* of PWS
+    prLog("Calculate the percentile corresponding to the prefered walking speed.\n", fcnName);
     if isfield(params, 'preferredWalkingSpeed') && ~isnan(params.preferredWalkingSpeed)
         speedSorted = sort(speed);
         pws = params.preferredWalkingSpeed;
@@ -131,12 +152,13 @@ else
 end
 
 %% calculate measures for individual test days
+prLog("Calculate the measures for individual days.\n", fcnName);
 if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
     n = length(locomotionMeasures);
     testDays = NaT;
     idxDays = NaN;
     j = 1;
-    for i = 1 : n
+    for i = 1 : n        
         date = datetime(locomotionMeasures(i).absoluteStartTimeEpoch,'ConvertFrom','datenum');
         day  = datetime([date.Year, date.Month, date.Day] ,'InputFormat','yyyy-MM-dd');
         if i==1
@@ -162,6 +184,8 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
     bimodalFitWalkingSpeedPerDay(n,1) =  struct('Ashman_D',[],'peakDensity',[], 'peakSpeed', []);
     percentilePWSPerDay = NaN(n,1);
     for i=1:n
+        str = sprintf ("Calculate the measures for day %d.\n", i);
+        prLog(str, fcnName);
         if checkAbortFromGui()
             return;
         end
@@ -203,6 +227,9 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
         end
     end
 end
+
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end
 

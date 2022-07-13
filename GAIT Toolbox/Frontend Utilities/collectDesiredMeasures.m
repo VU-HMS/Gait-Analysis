@@ -3,7 +3,12 @@ function [measures] = collectDesiredMeasures(params, aggMeasureNames, aggregateI
 % help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Dec 2021, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
+
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
 showNames = false; % for debugging
 
@@ -104,6 +109,7 @@ if isfield(params, 'calcPowerAtStepFreqAP') && params.calcPowerAtStepFreqAP
     end
 end
 
+prLog("Calculate gait quality composite score.\n", fcnName);
 %% calculate GaitQualityComposite as reported in van Schooten, Pijnappels,
 % Rispens, Elders, Lips, Daffertshofer, Beek, & Van Dieen (2016). 
 % Daily-life gait quality as predictor of falls in older people: a 1-year 
@@ -131,7 +137,8 @@ if isfield(params, 'calcGaitQualityCompositeScore') && params.calcGaitQualityCom
     end
 end
 
-
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
     
 function bool = Contains (str, pattern)

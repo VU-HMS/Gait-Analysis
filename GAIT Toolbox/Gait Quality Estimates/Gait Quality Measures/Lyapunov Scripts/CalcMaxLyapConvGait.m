@@ -109,7 +109,7 @@ end
 WindowLenSec=WindowLen/FS;
 
 %% Calculate divergence
-Divergence=div_calc(StateSpace,WindowLenSec,FS,CycleTime,0);
+Divergence=div_calc_shorttimeseries(StateSpace,WindowLenSec,FS,CycleTime,0);
 ExtraArgsOut.Divergence=Divergence;
 
 %% Calculate slope of first FitWinLen samples of divergence curve

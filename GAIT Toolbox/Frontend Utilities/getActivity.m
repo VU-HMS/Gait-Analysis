@@ -41,12 +41,16 @@ function activityStruct = getActivity(classificationFile, varargin)
 %
 %
 %% 2022, kaass@fbw.vu.nl
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
 
 
 %% init / settings
-activityStruct=[];
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
 
+activityStruct=[];
 showTotalActivityDuration = false; % just for testing; should be false
 
 if (nargin < 1)    
@@ -86,6 +90,7 @@ if minValidDaysLying < minValidDaysActivities
 end
 
 %% read classification list
+prLog("Read classification file.\n", fcnName);
 data = fileread(classificationFile);
 if contains(data, ',')
    data = strrep(data, ',', '.');
@@ -106,6 +111,7 @@ nAct = length(activities);
 
 %% show total activity duration (i.e., summed over all days); for testing only
 if showTotalActivityDuration
+    prLog("Show total activity duration.\n", fcnName);
     duration = zeros(n, 0);
     for act = 1 : nAct
         idx = strcmp(table{:,4}, activities{act}) == 1;
@@ -135,6 +141,7 @@ if showTotalActivityDuration
 end
 
 %% prepare for transitions
+prLog("Get transitions.\n", fcnName);
 [table, aborted] = getTransitions(table);
 if (aborted)
     return;
@@ -165,6 +172,7 @@ end
 
 
 %% calculate measures
+prLog("Calculate duration and number of episodes.\n", fcnName);
 n = length(table.start);
 days = NaT;
 idxDays = NaN;
@@ -274,7 +282,9 @@ else
     transitionsAvg             = zeros(length(activities));
 
                
-    for i = 1:testDays        
+    for i = 1:testDays
+        str = sprintf ("Calculate duration and number of episodes for day %d.\n", i);
+        prLog(str, fcnName);
         if checkAbortFromGui()
             return;
         end
@@ -401,15 +411,15 @@ else
             lyingDurationAvg = sum(lyingDuration(~isnan(lyingDuration))) / numberOfValidDays;
             lyingEpisodesAvg = sum(lyingEpisodes(~isnan(lyingEpisodes))) / numberOfValidDays;
         else
-            lyingDurationAvg = NaN;
-            lyingEpisodesAvg = NaN;
+            lyingDurationAvg = 0;
+            lyingEpisodesAvg = 0;
         end
     end
 end
 
 
 %% save output
-
+prLog("Save output.\n", fcnName);
 % add row and column names to transitionAvg table
 if ~isnan(sum(sum(transitionsAvg)))
     a = cellstr(' '); 
@@ -495,6 +505,8 @@ activityStruct.numberOfTransitionsAvg  = round(numberOfTransitionsAvg);
 activityStruct.transitions             = transitions;
 activityStruct.transitionsAvg          = transitionsAvg;
 
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end % function
 

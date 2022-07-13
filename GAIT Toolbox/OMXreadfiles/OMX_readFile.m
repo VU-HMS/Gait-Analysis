@@ -1,9 +1,9 @@
-%
 %   NOTES:
 %   * This version defaults to reading just the accelerometer values.
 %   * The gyroscope/magnetometer data can be read when given the options:  'modality', [1, 1, 1]
 %   * Stepped data can be read given the options:  'step', 100
-%   * The accelerometer values are currently always scaled 1/4096 (the default range conversion to 'g')
+%   * The accelerometer/gyroscope/magnetometer values are scaled depending
+%   * on the hardware type.
 %   * Metadata, light, pressure, temperature and battery levels are not yet supported
 %   * For speed, the Matlab importer doesn't check the sector checksum.
 %
@@ -20,8 +20,8 @@
 %
 %           'info'              If set to 1, just reads information
 %                               from file. Such as start time of
-%                               measurement, device serialnumber, etc. 
-%                               (see example below)
+%                               logging, sensor id, etc. (see example
+%                               below)
 %
 %           'packetInfo'        A Nx3 matrix containing pre-read
 %                               packet locations, timestamps and
@@ -53,10 +53,7 @@
 %           'step'              Skip samples (1 = no skipping),
 %                               inefficient for small numbers that are not 1.
 %
-%
-%       EXAMPLES:
-%
-%       Reading file information:
+% Reading file information:
 %           >> fileinfo = OMX_readFile('foobar.omx', 'info', 1)
 %               fileinfo =
 %                   packetInfo: [991997x5 double]
@@ -75,7 +72,6 @@
 %               'packetInfo', fileinfo.packetInfo, ...
 %               'startTime', datenum('19-Feb-2012 00:00:00'), ...
 %               'stopTime', datenum('20-Feb-2012 00:00:00'));
-%
 %           >> data =
 %                 packetInfo: [73059x5 double]
 %                        ACC: [8766736x4 double]
@@ -86,6 +82,7 @@
 %       Dan Jackson, 2014
 %       derived from CWA importer by Nils Hammerla, 2012 <nils.hammerla@ncl.ac.uk>
 %
+
 % Copyright (c) 2012-2014, Newcastle University, UK.
 % All rights reserved.
 %
@@ -108,4 +105,3 @@
 % CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
-%

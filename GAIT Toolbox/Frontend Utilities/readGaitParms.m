@@ -3,13 +3,18 @@ function [params, error] = readGaitParms(file, silent, app)
 %  help utility for gaitAnalyse and gaitAnalysis (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: May 2022, kaass@fbw.vu.nl
 
 global guiApp
 
+st = dbstack;
+fcnName = st.name;
+str = sprintf ("Enter %s().\n", fcnName);
+prLog(str, fcnName);
+
 error = false;
 params=[];
-
+filename = strrep(file, '\', '/');
 
 getActivity = ~isdeployed; % showing physical activity info is the default 
                            % within the MATLAB-environment
@@ -64,7 +69,9 @@ params.minValidDaysLying             =  3;
 if ~nargin 
    [f, d] = uigetfile('.txt', 'Select parameter file');
    if ~file
-       fprintf(idOut, 'No parameter file selected.'); 
+       str = sprintf('No parameter file selected.');
+       prLog(str, fcnName);
+       fprintf(idOut, str); 
        return;
    end
    file = [d f];
@@ -98,9 +105,11 @@ for i=1:n
        continue
    end
    bool = Contains(char(value), 'y');
-   if Contains(name, 'Seconds') && Contains(name, 'Episode')      
+   if Contains(name, 'Seconds') && Contains(name, 'Episode') 
+       str = sprintf ('Parameter "%s" in %s is obsolete and no longer used.\n', toString(name), filename);
+       prLog (str, fcnName);
        if ~silent
-          fprintf(idOut, 'Parameter "%s" in %s is obsolete and no longer used.\n', toString(name), file);
+          fprintf(idOut, str);
        end
    elseif Contains(name, 'Epoch') && Contains(name, 'Length')
        params.epochLength = str2double(value);
@@ -196,23 +205,36 @@ for i=1:n
           if ~isnumeric(idOut)    
               idOut.pError = true;
           end
-          fprintf(idOut, 'Unknown parameter "%s" in %s\n', toString(name), file);
+          str = sprintf ('Unknown parameter "%s" in %s.\n', toString(name), filename);
+          fprintf(idOut, str);
+          prLog (str, fcnName);
        end
        error = true;
    end
 end % for
 
+
 if params.epochLength < params.minEpochLength
-    fprintf(idOut, 'Invalid epoch length in %s (should be at least %ds).\n', file, params.minEpochLength);
-    fprintf(idOut, 'Default value of %ds will be used instead.\n', defaultEpochLength);
+    str1 = sprintf('Invalid epoch length in %s (should be at least %ds);', filename, params.minEpochLength);
+    str2 = sprintf('default value of %ds will be used instead.\n', defaultEpochLength);
     params.epochLength = defaultEpochLength;
+    fprintf(idOut, [str1, '\n', str2]);
+    prLog([str1, ' ', str2], fcnName);
+
 end
 
 if params.minValidDaysLying < params.minValidDaysActivities
-    fprintf(idOut, 'Minimal valid lying days (%d) should not subseed that of the activities (%d).\n', params.minValidDaysLying, params.minValidDaysActivities);
-    fprintf(idOut, 'New value of %d will be used instead.\n', params.minValidDaysActivities);
+    str1 = sprintf('Minimal valid lying days (%d) should not subseed that of the activities (%d).\n', params.minValidDaysLying, params.minValidDaysActivities);
+    str2 = sprintf('New value of %d will be used instead.\n', params.minValidDaysActivities);
     params.minValidDaysLying = params.minValidDaysActivities;
+    fprintf(idOut, str1);
+    fprintf(idOut, str2); 
+    prLog(str1, fcnName);
+    prLog(str2, fcnName);
 end
+
+str = sprintf ("Leave %s().\n", fcnName);
+prLog(str, fcnName);
 
 end % function
 
