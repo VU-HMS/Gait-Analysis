@@ -1,23 +1,23 @@
-function [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, legLength, verbosityLevel, analyzeTime)
-%% function [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, legLength, verbosityLevel)
+function [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, legLength, cutOffFreq, verbosityLevel, analyzeTime)
+%% function [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, legLength, cutOffFreq, verbosityLevel)
 % help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: May 2022, kaass@fbw.vu.nl
+% Last updated: Oct 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 global guiApp
 
 st = dbstack;
-fcnName = st.name;
-str = sprintf ("Enter %s().\n", fcnName);
-prLog(str, fcnName);
+fncName = st.name;
+str = sprintf ("Enter %s().\n", fncName);
+prLog(str, fncName);
 
-if (nargin < 3)
+if (nargin < 5)
     verbosityLevel = 1;
 end
 
-if (nargin < 4)
+if (nargin < 6)
     analyzeTime = 0;
 end
 
@@ -43,9 +43,9 @@ for i=1:nEpisodes
      
     if isempty(locomotionEpisodes(i).signal)
         ndiscard = ndiscard+1;
-        str = sprintf ("Discarded sample %d (tot=%d), duration: %f (%f), len (%d) < winSize (%d), sample rate: %f\n", ...
-                       n, ndiscard, episodeLength/sampleRate, seconds, episodeLength, winSize, sampleRate);
-        prLog(str, fcnName);
+        str = sprintf ("Discarded empty sample %d (total discards = %d)\n",...
+                       i, ndiscard);
+        prLog(str, fncName);
         if (verbosityLevel > 1)
            fprintf (idOut, str); 
         end
@@ -65,14 +65,14 @@ for i=1:nEpisodes
                     else
                         str = sprintf ("Processing episode %d.\n", i);
                     end
-                    prLog(str, fcnName);
+                    prLog(str, fncName);
                 end
                 first = startEpochs + (j-1)*winSize;
                 last  = startEpochs + j*winSize -1;
                 [locomotionMeasures(epoch).Measures] = ...
                       GaitQualityFromTrunkAccelerations(...
                           locomotionEpisodes(i).signal(first:last,:),...
-                          sampleRate, legLength,...
+                          sampleRate, legLength, cutOffFreq, ...
                           'analyzeTime', analyzeTime, ...
                           'verbosityLevel', verbosityLevel); 
                 startTimeRel = locomotionEpisodes(i).relativeStartTime;
@@ -97,13 +97,13 @@ for i=1:nEpisodes
     end
     if (verbosityLevel > 1) || (i==nEpisodes) || (mod(i,100)==0)
         str = sprintf ("Completed %d out of %d episodes.\n", i, nEpisodes);
-        prLog(str, fcnName);
+        prLog(str, fncName);
     end
     
 end
 
-str = sprintf ("Leave %s().\n", fcnName);
-prLog(str, fcnName);
+str = sprintf ("Leave %s().\n", fncName);
+prLog(str, fncName);
 
 end
 

@@ -68,14 +68,14 @@ function gaitAnalyse(parametersFile, varargin)
 %                  print statements should go
 
 %% 2021, kaass@fbw.vu.nl
-% Last updated: July 2022, kaass@fbw.vu.nl
+% Last updated: June 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 global guiApp abortPrinted
 
 st = dbstack;
-fcnName = st.name;
-prLog("Start analyzing.\n", fcnName, true, true);
+fncName = st.name;
+prLog("Start analyzing.\n", fncName, true, true);
 
 validOverrideLevel = @(x) isnumeric(x) && isscalar(x) && (x >= 0) && (x<=3);
 validVerbosityLevel= @(x) isnumeric(x) && isscalar(x) && (x >= 0) && (x<=2);
@@ -88,7 +88,7 @@ addParameter(p, 'verbosityLevel',            1,     validVerbosityLevel);
 addParameter(p, 'analyzeTime',               false, @islogical);
 addParameter(p, 'saveToJSON',                true,  @islogical);
 addParameter(p, 'class',                     0,     @isobject);
-parse(p,varargin{:})
+parse(p,varargin{:});
 
 app = p.Results.class;
 overwriteFiles = p.Results.overwriteFiles;
@@ -115,7 +115,7 @@ if (~ismember('overwriteFiles', p.UsingDefaults))
             ~ismember('overwriteAggregatedValues', p.UsingDefaults))
             str = sprintf ("Warning: Option 'overwriteFiles' overrules all other overwrite options!\n");
             fprintf(idOut, str);
-            prLog(str, fcnName);
+            prLog(str, fncName);
         end
     end
 else
@@ -125,12 +125,12 @@ else
             if (~ismember('overwriteMeasures', p.UsingDefaults) && ~p.Results.overwriteMeasures)
                 str = sprintf("Warning: Option 'overwriteEpisodes' implies 'overwriteMeasures'!\n");
                 fprintf(idOut, str);
-                prLog(str, fcnName);
+                prLog(str, fncName);
             end
             if (~ismember('overwriteAggregatedValues', p.UsingDefaults) && ~p.Results.overwriteAggregatedValues)
                 str = sprintf("Warning: Option 'overwriteEpisodes' implies 'overwriteAggregatedValues'!\n");
                 fprintf(idOut, str);
-                prLog(str, fcnName);
+                prLog(str, fncName);
             end
         end
     elseif (p.Results.overwriteMeasures)
@@ -139,7 +139,7 @@ else
             if (~ismember('overwriteMeasures', p.UsingDefaults) && ~p.Results.overwriteAggregatedValues)
                 str = sprintf("Warning: Option 'overwriteMeasures' implies 'overwriteAggregatedValues'!\n");
                 fprintf(idOut, str);
-                prLog(str, fcnName);
+                prLog(str, fncName);
             end
         end
     elseif (p.Results.overwriteAggregatedValues)
@@ -155,6 +155,7 @@ if ~nargin
        fprintf(idOut, 'No parameter file selected. '); 
        str = input('Continue anyway <y/n>? ', 's');
        if ~contains(str, 'y')
+           abortAnalysis(isGUI, idOut, fncName);
            return;
        end
        parametersFile=[];
@@ -165,7 +166,7 @@ end
 
 
 %% read the parameter file
-prLog("Read parameter file.\n", fcnName);
+prLog("Read parameter file.\n", fncName);
 if ~isempty(parametersFile)
    [params, error] = readGaitParms (parametersFile);
 else
@@ -173,9 +174,7 @@ else
 end
 
 if error 
-    if isGUI
-        idOut.gaitError = true;
-    end
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
@@ -183,15 +182,13 @@ end
 %% get missing paramaters
 [params, error]  = getMissingGaitParms (params);
 if error 
-    if isGUI
-        idOut.gaitError = true;
-    end
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
 
 %% construct file names and show the gait paramters that will be used
-prLog("Construct file names.\n", fcnName);
+prLog("Construct file names.\n", fncName);
 params.classFile    = strrep(params.classFile, '\', '/');
 params.accFile      = strrep(params.accFile,   '\', '/');
 [filepath, name, ~] = fileparts(params.accFile);
@@ -204,20 +201,22 @@ fileNameActivityTxt = [filepath '/' name '_GA_Activity' '.txt'];
 fileNameLog         = [filepath '/' name '_GA_Log' '.txt'];
 
 message = sprintf ("See %s for more log messages.\n\n", fileNameLog);
-prLog(message, fcnName);
+prLog(message, fncName);
 prLog(); %% close file
 
 params.use_acc = 1;
 params.use_gyr = 0;
 params.use_mag = 0;
 
-prLog('Parameters that will be used:\n', fcnName,true, true, fileNameLog);
+prLog('Parameters that will be used:\n', fncName,true, true, fileNameLog);
 message = sprintf('  Classification file: %s\n', params.classFile);
 str = sprintf('  Raw measurement file: %s\n', params.accFile);
 message = [message, str];
 str = sprintf('  Leg length: %.3f\n', params.legLength);
 message = [message, str];
 str = sprintf('  Epoch length: %d\n', params.epochLength);
+message = [message, str];
+str = sprintf('  Cutoff frequency: %.2f\n', params.cutoffFrequency);
 message = [message, str];
 str = sprintf('  Seconds to skip from start of measurement: %d\n', params.skipStartSeconds);
 message = [message, str];
@@ -251,12 +250,13 @@ if (verbosityLevel > 0)
     fprintf(idOut, message);
 end
 
-if ~checkInputFile(params.classFile, 'class', idOut, fcnName)
+if ~checkInputFile(params.classFile, 'class', idOut, fncName)
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
 %% show physical activities from classification
-prLog("Get physical activity from classification.\n", fcnName);
+prLog("Get physical activity from classification.\n", fncName);
 if params.getPhysicalActivityFromClassification
     fprintf(idOut, '\nCollecting physical activity from classification file...\n');
     actStruct = getActivity(params.classFile, ...
@@ -275,13 +275,14 @@ if params.getPhysicalActivityFromClassification
    
 end
 
-if ~checkInputFile(params.accFile, 'acc', idOut, fcnName)
+if ~checkInputFile(params.accFile, 'acc', idOut, fncName)
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
 %% load or extract the gait episodes
 if ~exist(fileNameEpisodes, 'file') || (overwriteFiles >=3)
-    prLog("Extract locomotion episodes.\n", fcnName);
+    prLog("Extract locomotion episodes.\n", fncName);
     fprintf(idOut, '\nExtracting locomotion episodes (may take a while)...\n');
     t = tic;
     [locomotionEpisodes, fileInfo] = ... 
@@ -298,7 +299,7 @@ if ~exist(fileNameEpisodes, 'file') || (overwriteFiles >=3)
     end
     overwriteFiles = 2; % if episodes have been extracted, everything else needs to be recalculated
 else
-    prLog("Load locomotion episodes.\n", fcnName);
+    prLog("Load locomotion episodes.\n", fncName);
     fprintf(idOut, '\nLoading gait episodes.\n');
     load (fileNameEpisodes, 'locomotionEpisodes', 'fileInfo', 'epochLength');
 end
@@ -308,19 +309,26 @@ if checkAbortFromGui()
 end
 
 if ~exist('locomotionEpisodes', 'var') || isempty(locomotionEpisodes)
-    prLog("Unable to compute measures: no locomotion episodes found.\n", fcnName);
+    prLog("Unable to compute measures: no locomotion episodes found.\n", fncName);
     fprintf(idOut, "Unable to compute measures: no locomotion episodes found.\n\n");
+    if saveToJSON 
+        emptyJSON(filepath, name, params);
+    end
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
     
 %% load or calculate measures for all epochs
 if ~exist(fileNameMeasures, 'file') || (overwriteFiles >= 2)
-    prLog("Calculate locomotion measures.\n", fcnName);
+    prLog("Calculate locomotion measures.\n", fncName);
     fprintf(idOut, 'Calculating locomotion measures (may take a while)...\n');
     t = tic;
     legLength = params.legLength;
-    [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength, legLength, verbosityLevel, analyzeTime);
+    cutoffFreq = params.cutoffFrequency;
+    [locomotionMeasures] = getMeasures(locomotionEpisodes, epochLength,...
+                           legLength, cutoffFreq,...
+                           verbosityLevel, analyzeTime);
     if checkAbortFromGui() 
         return;
     end
@@ -337,23 +345,24 @@ if ~exist(fileNameMeasures, 'file') || (overwriteFiles >= 2)
         locomotionMeasures(i).absoluteStartTimeEpoch = datenum(startEpisode + seconds(j*epochLength));
     end
     fprintf(idOut, 'Time to calculate locomotion measures = %.2f seconds.\n', toc(t));
-    save (fileNameMeasures, 'locomotionMeasures', 'fileInfo', 'epochLength', 'legLength');
+    save (fileNameMeasures, 'locomotionMeasures', 'fileInfo', 'epochLength', 'legLength', 'cutoffFreq');
     overwriteFiles = 1; % if measures have been recalculated, aggregated values need to be recollected also
 else
-    prLog("Load locomotion measures.\n", fcnName);
+    prLog("Load locomotion measures.\n", fncName);
     fprintf(idOut, 'Loading locomotion measures.\n');
     load (fileNameMeasures, 'locomotionMeasures', 'legLength');
 end
 
 %% load or calculate the aggregated values
 if length(locomotionMeasures) < 50
-    prLog("Too few epochs to reliably calculated aggregated measures.\n", fcnName);
+    prLog("Too few epochs to reliably calculated aggregated measures.\n", fncName);
     str = sprintf('Only %d epochs of at least %d seconds found (cannot reliably calculate the aggregated measures).\n', length(locomotionMeasures), params.epochLength);
     fprintf(idOut, str);
     fprintf(idOut, "");
-    if isGUI
-       idOut.gaitError = true;
+    if saveToJSON 
+        emptyJSON(filepath, name, params);
     end
+    abortAnalysis(isGUI, idOut, fncName);
     return;
 end
 
@@ -362,7 +371,7 @@ if checkAbortFromGui()
 end
 
 if ~exist(fileNameAggregated, 'file') || (overwriteFiles >= 1)
-    prLog("Collect aggregated values.\n", fcnName);
+    prLog("Collect aggregated values.\n", fncName);
     fprintf(idOut, 'Collect aggregated values...\n');
     [aggregateInfo, aggMeasureNames, bimodalFitWalkingSpeed, percentilePWS, nEpochsUsed, ...
      aggregateInfoPerDay, bimodalFitWalkingSpeedPerDay, percentilePWSPerDay] ...
@@ -381,7 +390,7 @@ if ~exist(fileNameAggregated, 'file') || (overwriteFiles >= 1)
           'percentilePWS', 'preferredWalkingSpeed', 'percentiles', 'skipStartSeconds', 'nEpochsUsed', ...
           'aggregateInfoPerDay', 'bimodalFitWalkingSpeedPerDay', 'percentilePWSPerDay');
 else    
-    prLog("Load aggregated values.\n", fcnName);
+    prLog("Load aggregated values.\n", fncName);
     fprintf(idOut, 'Loading aggregated values.\n');
     percentilePWS=NaN; % for backwards compatibility   
     bimodalFitWalkingSpeedPerDay=NaN; % for backwards compatibility
@@ -395,7 +404,7 @@ end
     
 
 %% show desired aggregated measures
-prLog("Show desired aggregated measures.\n", fcnName);
+prLog("Show desired aggregated measures.\n", fncName);
 [measures] = collectDesiredMeasures(params, aggMeasureNames, aggregateInfo);
 if exist('aggregateInfoPerDay', 'var')
     nDays = size(aggregateInfoPerDay,1);
@@ -403,14 +412,14 @@ if exist('aggregateInfoPerDay', 'var')
     measuresPerDay(nDays+1)   = [];       % delete last struct
     for i=1:nDays
         str = sprintf ("Show desired aggregated measures for day %d.\n", i);
-        prLog(str, fcnName);
+        prLog(str, fncName);
         if checkAbortFromGui()
             return;
         end
         if ~isnan(aggregateInfoPerDay(i,1,1))
             measuresPerDay(i) = collectDesiredMeasures(params, aggMeasureNames, squeeze(aggregateInfoPerDay(i,:,:)));
         else
-            prLog("Not enough locomotion data available for this day.\n", fcnName);
+            prLog("Not enough locomotion data available for this day.\n", fncName);
         end
     end
 else
@@ -424,11 +433,11 @@ if checkAbortFromGui()
     return;
 end
 
-prLog("Save desired measures.\n", fcnName);
+prLog("Save desired measures.\n", fncName);
 if isempty(measures) && ~bmf && ~ppws
     str = sprintf(idOut, 'No measures specified in %s.\n', parametersFile);
     fprintf(idOut, str);
-    prLog(str, fcnName);
+    prLog(str, fncName);
     if isa(idOut, 'main_App')   
         fprintf(idOut, 'See "Tools | Show example parameters"\n');
     else
@@ -438,7 +447,7 @@ if isempty(measures) && ~bmf && ~ppws
     end
 else    
     % save to .mat
-    prLog("Save desired measures to MATLAB file.\n", fcnName);
+    prLog("Save desired measures to MATLAB file.\n", fncName);
     if ~isempty(measures)
         save(fileNameResults, 'measures');
         if ~isempty(measuresPerDay)
@@ -461,7 +470,7 @@ else
     end
         
     % save to .txt and write to console
-    prLog("Save desired measures to text file.\n", fcnName);
+    prLog("Save desired measures to text file.\n", fncName);
     fid = fopen(fileNameResultsTxt,'w');
     fn = fieldnames(measures);
     if ~isempty(measures)
@@ -533,16 +542,18 @@ else
     fclose(fid);
       
     % save to json
-    prLog("Save desired measures to json file(s).\n", fcnName);
+    prLog("Save desired measures to json file(s).\n", fncName);
     if saveToJSON
        fileNameResultsJSON = [filepath '/' name '_GA_Results' '.json'];
        toJSON(fileNameResultsJSON, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws);
        for n=1:nDays
           nStr = sprintf ('%02d', n);
+          fileNameResultsJSON = [filepath '/' name '_GA_Results_Day' nStr '.json'];
           if ~isempty(measuresPerDay(n)) && ~isempty(measuresPerDay(n).WalkingSpeed)
-              fileNameResultsJSON = [filepath '/' name '_GA_Results_Day' nStr '.json'];
               toJSON(fileNameResultsJSON, measuresPerDay(n), legLength, ...
                      bimodalFitWalkingSpeedPerDay(n), percentiles, percentilePWSPerDay(n), bmf, ppws);
+          else 
+              toJSON(fileNameResultsJSON, [], legLength, [], percentiles, [], bmf, ppws);
           end
        end
     end
@@ -556,18 +567,37 @@ if (verbosityLevel > 0)
     fprintf(idOut, '\nAll done!\n\n');
 end
 
-prLog("Done analyzing.\n\n", fcnName);
+prLog("Done analyzing.\n\n", fncName);
 prLog(); %% close file
 
 end % function
 
 
+
 %% sub functions
+function abortAnalysis(isGUI, idOut, fncName)
+    if isGUI
+        idOut.gaitError = true;
+    end
+    prLog("Abort analyzing.\n\n", fncName);
+    prLog(); %% close log file
+end
+
+
+function emptyJSON(filepath, filename, params)
+    fileNameResultsJSON = [filepath '/' filename '_GA_Results' '.json'];
+    bmf  = isfield(params, 'calcBimodalFitWalkingSpeed') && params.calcBimodalFitWalkingSpeed;
+    ppws = isfield(params, 'calcPercentilePWS') && params.calcPercentilePWS;
+    toJSON(fileNameResultsJSON, [], params.legLength, [], params.percentiles, [], bmf, ppws);
+end
+
+
 function toJSON(fileName, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws)
 
 %% start json
 fp = fopen(fileName, 'w');
 fprintf(fp, '{\n');
+none="null";
 
 %% parameters
 fprintf(fp, '\t"description": "Spatio temporal parameters",\n');
@@ -581,42 +611,65 @@ fprintf(fp, '\t],\n');
 %% general measures
 if ~isempty(measures)
     fn = fieldnames(measures);
-    fprintf(fp, '\t"GeneralMeasures": [\n');
-    for i=1:numel(fn)  
-        if Contains(fn{i}, "speed")
-            unit = "m/s";
-        elseif Contains(fn{i}, "length")
-            unit = "m";
-        else
-            unit = "None";
-        end
+else
+    fn = {'WalkingSpeed', 'StrideLength', 'SampleEntropy_VT',...
+          'SampleEntropy_ML', 'SampleEntropy_AP', 'StrideRegularity_VT',...
+          'RMS_ML', 'IndexHarmonicity_ML', 'PowerAtStepFreq_AP',...
+          'GaitQualityCompositeScore'};
+end
+
+fprintf(fp, '\t"GeneralMeasures": [\n');
+for i=1:numel(fn)
+    if Contains(fn{i}, "speed")
+        unit = "m/s";
+    elseif Contains(fn{i}, "length")
+        unit = "m";
+    else
+        unit = "None";
+    end
+    if ~isempty(measures)
         fprintf(fp, '\t\t{"label": "%s", "unit": "%s", "values": {"%s": %.3f, "%s": %.3f, "%s": %.3f}}',...
                 char(fn(i)), unit,...
                 "PCTL1", measures.(fn{i})(1),...
                 "PCTL2", measures.(fn{i})(2),...
                 "PCTL3", measures.(fn{i})(3));
-        if i<numel(fn)
-            fprintf (fp, ',');
-        end
-        fprintf(fp, '\n');
-    end 
-    fprintf(fp, '\t],');
+    else
+        fprintf(fp, '\t\t{"label": "%s", "unit": "%s", "values": {"%s": %s, "%s": %s, "%s": %s}}',...
+                char(fn(i)), unit,...
+                "PCTL1", none, "PCTL2", none, "PCTL3", none);
+    end
+    if i<numel(fn)
+        fprintf (fp, ',');
+    end
+    fprintf(fp, '\n');
+end
+fprintf(fp, '\t],');
 %     if bmf || ppws
 %         fprintf(fp, ',');
 %     end
-    fprintf(fp, '\n');
-end
+fprintf(fp, '\n');
+
 
 %% bimodal fit
 if bmf
-    fprintf(fp, '\t"BimodalFitWalkingSpeed": [\n');
-    fprintf(fp, '\t\t{"label": "Ashman_D", "unit": "None", "values": %.3f},\n',...
+    if ~isempty(bimodalFitWalkingSpeed)
+        fprintf(fp, '\t"BimodalFitWalkingSpeed": [\n');
+        fprintf(fp, '\t\t{"label": "Ashman_D", "unit": "None", "values": %.3f},\n',...
                 bimodalFitWalkingSpeed.Ashman_D);
-    fprintf(fp, '\t\t{"label": "PeakDensity", "unit": "None", "values": {"1st": %.3f, "2nd": %.3f}},\n',...
-                bimodalFitWalkingSpeed.peakDensity(1), bimodalFitWalkingSpeed.peakDensity(2));            
-    fprintf(fp, '\t\t{"label": "PeakSpeed", "unit": "m/s", "values": {"1st": %.3f, "2nd": %.3f}}\n',...
-                bimodalFitWalkingSpeed.peakSpeed(1), bimodalFitWalkingSpeed.peakSpeed(2));        
-    fprintf(fp, '\t],');
+        fprintf(fp, '\t\t{"label": "PeakDensity", "unit": "None", "values": {"1st": %.3f, "2nd": %.3f}},\n',...
+                bimodalFitWalkingSpeed.peakDensity(1), bimodalFitWalkingSpeed.peakDensity(2));
+        fprintf(fp, '\t\t{"label": "PeakSpeed", "unit": "m/s", "values": {"1st": %.3f, "2nd": %.3f}}\n',...
+                bimodalFitWalkingSpeed.peakSpeed(1), bimodalFitWalkingSpeed.peakSpeed(2));
+        fprintf(fp, '\t],');
+    else
+        fprintf(fp, '\t"BimodalFitWalkingSpeed": [\n');
+        fprintf(fp, '\t\t{"label": "Ashman_D", "unit": "None", "values": %s},\n', none);
+        fprintf(fp, '\t\t{"label": "PeakDensity", "unit": "None", "values": {"1st": %s, "2nd": %s}},\n',...
+                    none, none);
+        fprintf(fp, '\t\t{"label": "PeakSpeed", "unit": "m/s", "values": {"1st": %s, "2nd": %s}}\n',...
+                    none, none);
+        fprintf(fp, '\t],');
+    end
 %     if ppws
 %         fprintf(fp, ',');
 %     end
@@ -626,8 +679,12 @@ end
 %% percentile of preferred walking speed
 if ppws
     fprintf(fp, '\t"PercentilePreferredWalkingSpeed": [\n');
-    fprintf(fp, '\t\t{"label": "PercentilePWS", "unit": "None", "values": %.2f}\n',...
+    if ~isempty(percentilePWS)
+        fprintf(fp, '\t\t{"label": "PercentilePWS", "unit": "None", "values": %.2f}\n',...
                 percentilePWS);
+    else
+        fprintf(fp, '\t\t{"label": "PercentilePWS", "unit": "None", "values": %s}\n', none);
+    end
     fprintf(fp, '\t]\n');
 end
 
@@ -635,7 +692,7 @@ end
 fprintf(fp, "}");
 fclose (fp);
 
-end % main function
+end % toJSON
 
 
 function bool = Contains (str, pattern)
@@ -748,13 +805,13 @@ end % subfunction timeStr
 
 
 
-function ok = checkInputFile(file, type, fp, fcnName)
+function ok = checkInputFile(file, type, fp, fncName)
    ok = true;
    
    if exist (file, 'file') ~= 2
        str = sprintf("Input file '%s' not found.\n", file);
        fprintf (fp, str);
-       prLog (str, fcnName);
+       prLog (str, fncName);
        ok = false;
        return;
    end
@@ -767,7 +824,7 @@ function ok = checkInputFile(file, type, fp, fcnName)
                    str = str + "It looks like a classification file though...\n";
                end
                fprintf (fp, str);
-               prLog (str, fcnName);
+               prLog (str, fncName);
                ok = false;
                return;
            end    
@@ -778,7 +835,7 @@ function ok = checkInputFile(file, type, fp, fcnName)
                    str = str + "It looks like a raw measurement file though...\n";
                end
                fprintf (fp, str);
-               prLog (str, fcnName);
+               prLog (str, fncName);
                ok = false;
                return;
            end          

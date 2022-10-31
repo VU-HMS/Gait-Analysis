@@ -3,14 +3,14 @@ function [params, error] = readGaitParms(file, silent, app)
 %  help utility for gaitAnalyse and gaitAnalysis (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: May 2022, kaass@fbw.vu.nl
+% Last updated: Oct 2022, kaass@fbw.vu.nl
 
 global guiApp
 
 st = dbstack;
-fcnName = st.name;
-str = sprintf ("Enter %s().\n", fcnName);
-prLog(str, fcnName);
+fncName = st.name;
+str = sprintf ("Enter %s().\n", fncName);
+prLog(str, fncName);
 
 error = false;
 params=[];
@@ -39,6 +39,7 @@ params.minEpochLength                = 5;
 params.epochLength                   = defaultEpochLength;
 params.skipStartSeconds              = 0;
 params.percentiles                   = [20 50 80];
+params.cutoffFrequency               = 0.5;
 params.calcWalkingSpeed              = false;
 params.calcStrideLength              = false;
 params.calcStrideRegularityVT        = false;
@@ -70,49 +71,57 @@ if ~nargin
    [f, d] = uigetfile('.txt', 'Select parameter file');
    if ~file
        str = sprintf('No parameter file selected.');
-       prLog(str, fcnName);
+       prLog(str, fncName);
        fprintf(idOut, str); 
        return;
    end
    file = [d f];
 end
 
-
 str = fileread(file);
-pat = {'[\r\n]+'};
-NameValuePairs = strtrim(regexp(str, pat, 'split'));
 
+% split in lines
+pat = {'[\r\n]+'};
+str = regexp(str, pat, 'split');
+str = string(str{:});
+
+% if a line contains a '%', only look at the text before
+i = contains(str, '%');
+str(i) = extractBefore(str(i), '%');
+
+% remove white space
+NameValuePairs = strtrim(str);
+
+% create variable/value pairs by splitting at '='
 pat = {'='};
-len = size(NameValuePairs{1}, 2);
+len = size(NameValuePairs, 2);
 pair = cell(len, 1);
 n=0;
 for i=1:len
-    if ~isempty(NameValuePairs{1}{i})
-        c = NameValuePairs{1}{i}(1);
-        if (isstrprop(c, 'alpha') || isstrprop(c, 'digit'))
-            n=n+1;
-            pair{n} = regexp(NameValuePairs{1}{i}, pat, 'split');
-        end    
+    if NameValuePairs(i) ~= ""   
+       n=n+1;      
+       pair(n) = regexp(NameValuePairs(i), pat, 'split');
     end
 end
 
-
 for i=1:n
    try
-       name = strtrim(pair{i}{1}(1));
-       value = strtrim(pair{i}{1}(2));
+       name = strtrim(pair{i}(1));
+       value = strtrim(pair{i}(2));
    catch
        continue
    end
    bool = Contains(char(value), 'y');
    if Contains(name, 'Seconds') && Contains(name, 'Episode') 
        str = sprintf ('Parameter "%s" in %s is obsolete and no longer used.\n', toString(name), filename);
-       prLog (str, fcnName);
+       prLog (str, fncName);
        if ~silent
           fprintf(idOut, str);
        end
    elseif Contains(name, 'Epoch') && Contains(name, 'Length')
        params.epochLength = str2double(value);
+   elseif Contains(name, 'cutoff') || Contains(name, 'cut-off') || Contains(name, 'cut off')
+       params.cutoffFrequency = str2double(value);
    elseif Contains(name, 'Skip') && Contains(name, 'Start')
        if Contains (name, 'Sec')    
            params.skipStartSeconds = str2double(value);
@@ -207,20 +216,30 @@ for i=1:n
           end
           str = sprintf ('Unknown parameter "%s" in %s.\n', toString(name), filename);
           fprintf(idOut, str);
-          prLog (str, fcnName);
+          prLog (str, fncName);
        end
        error = true;
    end
 end % for
 
 
+if (params.cutoffFrequency <= 0) || (params.cutoffFrequency >= 1.0)
+    str1 = sprintf('Invalid cutoff frequency for Butterworth filter in %s.', filename);
+    if params.cutoffFrequency <= 0
+        params.cutoffFrequency = 0.01;
+    elseif params.cutoffFrequency >= 1.0
+        params.cutoffFrequency = 0.99;
+    end
+    str2 = sprintf('It should be in range <0..1>; using %.2f instead.', params.cutoffFrequency); 
+    fprintf(idOut, [str1, '\n', str2]);
+    prLog([str1, ' ', str2], fncName);
+end
 if params.epochLength < params.minEpochLength
     str1 = sprintf('Invalid epoch length in %s (should be at least %ds);', filename, params.minEpochLength);
     str2 = sprintf('default value of %ds will be used instead.\n', defaultEpochLength);
     params.epochLength = defaultEpochLength;
     fprintf(idOut, [str1, '\n', str2]);
-    prLog([str1, ' ', str2], fcnName);
-
+    prLog([str1, ' ', str2], fncName);
 end
 
 if params.minValidDaysLying < params.minValidDaysActivities
@@ -229,12 +248,12 @@ if params.minValidDaysLying < params.minValidDaysActivities
     params.minValidDaysLying = params.minValidDaysActivities;
     fprintf(idOut, str1);
     fprintf(idOut, str2); 
-    prLog(str1, fcnName);
-    prLog(str2, fcnName);
+    prLog(str1, fncName);
+    prLog(str2, fncName);
 end
 
-str = sprintf ("Leave %s().\n", fcnName);
-prLog(str, fcnName);
+str = sprintf ("Leave %s().\n", fncName);
+prLog(str, fncName);
 
 end % function
 

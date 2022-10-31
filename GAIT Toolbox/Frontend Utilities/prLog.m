@@ -40,7 +40,7 @@ function prLog(message, func, addTime, newFile, fileName)
 
 
 %% 2022, kaass@fbw.vu.nl
-% Last updated: July 2022, kaass@fbw.vu.nl
+% Last updated: June 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 persistent logFID

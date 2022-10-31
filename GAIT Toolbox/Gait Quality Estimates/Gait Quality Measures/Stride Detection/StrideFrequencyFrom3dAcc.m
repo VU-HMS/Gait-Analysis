@@ -1,4 +1,4 @@
-function [StrideFrequency, QualityInd, PeakWidth, MeanNormalizedPeakWidth] = StrideFrequencyFrom3dAccBosbaan(AccXYZ, F)
+function [StrideFrequency, PSD, F, QualityInd, PeakWidth, MeanNormalizedPeakWidth] = StrideFrequencyFrom3dAcc(AccXYZ, FS)
 
 %% Description
 % Estimate stride frequency in 3d accelerometer data, using multi-taper and
@@ -7,10 +7,11 @@ function [StrideFrequency, QualityInd, PeakWidth, MeanNormalizedPeakWidth] = Str
 % Input: 
 %   AccXYZ: a three-dimensional time series with trunk accelerations
 %   FS: the sample frequency of the time series
-%   StrideFreqGuess: a first guess of the stride frequency
 %
 % Output:
 %   StrideFrequency: the estimated stride frequency
+%   PSD: Power spectrum density
+%   F:   Frequencies corresponding to the PSD
 %   QualityInd: a number (0-1, 0=no confidence, 1=fully confident) indicating how much confidence we have in the
 %   estimated stride frequency
 
@@ -34,7 +35,17 @@ function [StrideFrequency, QualityInd, PeakWidth, MeanNormalizedPeakWidth] = Str
 %  Sietse Rispens
 
 %% History
-%  February 2013, version 1.1, adapted from StrideFrequencyFrom3dAcc
+%  February 2013, version 1.1, adapted from StrideDetectionFrom3dAcc
+%   
+%  2022-10 (PvD/RC): Export PSD and F. 
+%                    Rename StrideFrequencyFrom3dAccBosbaan to
+%                    StrideFrequencyFrom3dAcc.
+
+PSD =[];
+F = [];
+QualityInd = [];
+PeakWidth = [];
+MeanNormalizedPeakWidth = [];
 
 minDuration = 5;
 
@@ -42,44 +53,41 @@ minDuration = 5;
 %% Check input
 if size(AccXYZ,2) ~= 3
     error('AccXYZ must be 3-d time series, i.e. contain 3 columns');
-elseif (numel(F) == 1) && (size(AccXYZ,1) < floor(minDuration*F)) % F is sample freq that may have been rounded up 
+elseif (numel(FS) == 1) && (size(AccXYZ,1) < floor(minDuration*FS)) % FS is sample freq that may have been rounded up 
     error('AccXYZ must be at least %d seconds long', minDuration);
 end
 
 
-%% Get PSD
-if numel(F) == 1, % Calculate the PSD from time series AccXYZ, F is the sample frequency
-    AccFilt = detrend(AccXYZ,'constant');  % Detrend data to get rid of DC component in most of the specific windows
-    LenPSD = floor(minDuration*F);
-    for i=1:3,
-        [P1,Fwf] = pwelch(AccFilt(:,i),hamming(LenPSD),[],LenPSD,F);
-        [P2,Fwf] = pwelch(AccFilt(end:-1:1,i),hamming(LenPSD),[],LenPSD,F);
-        Pwf(:,i) = (P1+P2)/2;
-    end
-elseif numel(F)==size(AccXYZ,1), % F are the frequencies of the power spectrum AccXYZ
-    Fwf = F;
-    Pwf = AccXYZ;
+%% Get PSD4
+% Calculate the PSD from time series AccXYZ, FS is the sample frequency
+AccFilt = detrend(AccXYZ, 'constant');  % Detrend data to get rid of DC component in most of the specific windows
+LenPSD = size(AccFilt,1);
+PSD = zeros(0, size(AccFilt, 2));
+for i=1:3
+    [P1,~]  = pwelch(AccFilt(:,i),hamming(LenPSD),[],LenPSD,FS);
+    [P2,F]  = pwelch(AccFilt(end:-1:1,i),hamming(LenPSD),[],LenPSD,FS);
+    PSD(1:numel(P1),i) = (P1+P2)/2;
 end
-Pwf(:,4) = sum(Pwf,2);
-    
+PSD4 = [PSD, sum(PSD,2)];
+
 
 %% Estimate stride frequency
 % set parameters
 HarmNr = [2 1 2];
 CommonRange = [0.6 1.2];
 % Get modal frequencies and the 'mean freq. of the peak'
-for i=1:4,
-    MF1I = find([zeros(5,1);Pwf(6:end,i)]==max([zeros(5,1);Pwf(6:end,i)]),1);
-    MF1 = Fwf(MF1I,1);
-    IndAround = Fwf>=MF1*0.5 & Fwf<=MF1*1.5;
-    MeanAround = mean(Pwf(IndAround,i));
-    PeakBeginI = find(IndAround & Fwf<MF1 & Pwf(:,i) < mean([MeanAround,Pwf(MF1I,i)]),1,'last');
-    PeakEndI = find(IndAround & Fwf>MF1 & Pwf(:,i) < mean([MeanAround,Pwf(MF1I,i)]),1,'first');
+for i=1:4
+    MF1I = find([zeros(5,1);PSD4(6:end,i)]==max([zeros(5,1);PSD4(6:end,i)]),1);
+    MF1 = F(MF1I,1);
+    IndAround = F>=MF1*0.5 & F<=MF1*1.5;
+    MeanAround = mean(PSD4(IndAround,i));
+    PeakBeginI = find(IndAround & F<MF1 & PSD4(:,i) < mean([MeanAround,PSD4(MF1I,i)]),1,'last');
+    PeakEndI = find(IndAround & F>MF1 & PSD4(:,i) < mean([MeanAround,PSD4(MF1I,i)]),1,'first');
     if isempty(PeakBeginI), PeakBeginI = find(IndAround,1,'first'); end
     if isempty(PeakEndI), PeakEndI = find(IndAround,1,'last'); end
-    ModalF(i) = sum(Fwf(PeakBeginI:PeakEndI,1).*Pwf(PeakBeginI:PeakEndI,i))/sum(Pwf(PeakBeginI:PeakEndI,i));
+    ModalF(i) = sum(F(PeakBeginI:PeakEndI,1).*PSD4(PeakBeginI:PeakEndI,i))/sum(PSD4(PeakBeginI:PeakEndI,i));
     if i==4
-        HarmNr(4) = HarmNr(find(Pwf(MF1I,1:3)==max(Pwf(MF1I,1:3)),1));
+        HarmNr(4) = HarmNr(find(PSD4(MF1I,1:3)==max(PSD4(MF1I,1:3)),1));
     end
 end
 % Get stride frequency and quality indicator from modal frequencies
@@ -117,16 +125,16 @@ if nargout >= 3
         MeanNormalizedPeakWidth = nan(1,3);
     end
     %% Get (mean) widths of harmonic peaks
-    for i=1:3,
+    for i=1:3
         WidthHarm = nan(1,N_Harm);
         PowerHarm  = nan(1,N_Harm);
-        for HarmonicNr = 1:N_Harm,
+        for HarmonicNr = 1:N_Harm
             FreqRangeIndices = ...
-                Fwf >= StrideFrequency*(HarmonicNr-0.5) ...
-                & Fwf <= StrideFrequency*(HarmonicNr+0.5);
-            PeakPower = sum(Pwf(FreqRangeIndices,i));
-            PeakMean = sum(Pwf(FreqRangeIndices,i).*Fwf(FreqRangeIndices))/PeakPower;
-            PeakMeanSquare = sum(Pwf(FreqRangeIndices,i).*Fwf(FreqRangeIndices).^2)/PeakPower;
+                F >= StrideFrequency*(HarmonicNr-0.5) ...
+                & F <= StrideFrequency*(HarmonicNr+0.5);
+            PeakPower = sum(PSD4(FreqRangeIndices,i));
+            PeakMean = sum(PSD4(FreqRangeIndices,i).*F(FreqRangeIndices))/PeakPower;
+            PeakMeanSquare = sum(PSD4(FreqRangeIndices,i).*F(FreqRangeIndices).^2)/PeakPower;
             WidthHarm(HarmonicNr) = sqrt(PeakMeanSquare-PeakMean.^2);
             PowerHarm(HarmonicNr) = PeakPower;
         end
@@ -138,16 +146,14 @@ if nargout >= 3
 end
 
 if nargout == 0
-    IXplotw = Fwf<10;
+    IXplotw = F<10;
     figure();
-    for i=1:3,
+    for i=1:3
         subplot(2,2,i);
-        plot(Fwf(IXplotw,1),Pwf(IXplotw,i));
+        plot(F(IXplotw,1),PSD4(IXplotw,i));
     end
     subplot(2,2,4);
-    plot(Fwf(IXplotw,1),Pwf(IXplotw,1:3));
+    plot(F(IXplotw,1),PSD4(IXplotw,1:3));
 end
-
-
 
 

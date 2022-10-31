@@ -4,7 +4,7 @@ function [abort] = checkAbortFromGui(printMessage)
 %  control if true is returned, e.g., "if checkAbortFromGui() return; end"
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: April 2022, kaass@fbw.vu.nl
+% Last updated: Oct 2022, kaass@fbw.vu.nl
 
 global guiApp abortPrinted
 
@@ -15,6 +15,7 @@ end
 if exist('guiApp', 'var') && ~isempty(guiApp) && ~isnumeric(guiApp) && guiApp.abort
     if printMessage
         fprintf(guiApp, 'Aborted by user.\n\n');
+        prLog(); %% close log file, assuming control is returned to GUI
         abortPrinted = true;
     end
     abort = true;

@@ -64,7 +64,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
 
         
     properties (Access = private)
-        versionTxt = 'Gait Analysis 3.3 - Interface to the VU-HMS Gait Toolbox';
+        versionTxt = 'Gait Analysis 3.4 - Interface to the VU-HMS Gait Toolbox';
         batchFile = 'GaitBatch.mat';
         timeStamp = 0;
         parmsError = false;
@@ -624,7 +624,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
                         end
                         skip = true;
                     else
-                        load (FileNameLocEpsMeas, 'legLength', 'locomotionMeasures');
+                        load (FileNameLocEpsMeas, 'legLength', 'locomotionMeasures', 'cutoffFreq');
                         if (~exist('legLength', 'var') || isempty(legLength) || ...
                             ~isfield(params, 'legLength') || ~isEqual (app, params.legLength, legLength))
                             if ~isfield(params, 'legLength')
@@ -640,9 +640,19 @@ classdef gaitAnalysis < matlab.apps.AppBase
                                 recalc_needed(3) = true;
                             end
                             skip = true;
+                        elseif (~exist('cutoffFreq', 'var') || isempty(cutoffFreq) || ...
+                                ~isfield(params, 'cutoffFrequency') || ~isEqual (app, params.cutoffFrequency, cutoffFreq))
+                            if ~silent
+                                 fprintf (app, "Parameter setting 'Cutoff frequency' not compatible with existing output files; (re)calculation required.\n");
+                            end
+                            recalc_needed(2) = true;
+                            recalc_needed(3) = true;                         
+                            skip = true;    
                         elseif ~exist('locomotionMeasures', 'var') || length(locomotionMeasures) < 50
-                            str = sprintf('Only %d episodes of at least %d seconds found (cannot reliably calculate measures).\n', length(locomotionMeasures), epochLength);
-                            fprintf(app, str);
+                            if exist('locomotionMeasures', 'var')
+                               str = sprintf('Only %d episodes of at least %d seconds found (cannot reliably calculate measures).\n', length(locomotionMeasures), epochLength);
+                               fprintf(app, str);
+                            end
                             err  = 2;
                             skip = true;
                         else
@@ -1128,17 +1138,18 @@ classdef gaitAnalysis < matlab.apps.AppBase
             toHelp(app, '    Classification file  = ?.csv                % mandatory!');
             toHelp(app, '    Raw measurement file = ?.OMX                % mandatory!');
             toHelp(app, '    Leg length** = 0.925                        % mandatory!'); 
-            toHelp(app, '    Epoch length*** = 10                        % defaults to 10');                      
+            toHelp(app, '    Epoch length*** = 10                        % defaults to 10');
+            toHelp(app, '    Cutoff frequency** = 0.5                    % defaults to 0.5 (used in Butterworth filter to counteract integration drift)');
             toHelp(app, '    Hours to skip at start of measurement* = 6  % defaults to 0; hours may be replaced by seconds or minutes');  
-            toHelp(app, '    Percentiles = [10 50 90]*                   % defaults to [20 50 80]');
+            toHelp(app, '    Percentiles* = [10 50 90]                   % defaults to [20 50 80]');
             toHelp(app, '    % ***changing requires recalculation of locomotion episodes, locomotion measures, and aggregated values');                         
             toHelp(app, '    %  **changing requires recalculation of locomotion measures and aggregated values');                         
             toHelp(app, '    %   *changing requires recalculation of aggregated values');                         
             toHelp(app, '');
             toHelp(app, '    Get physical activity from classification   = yes % defaults to yes');
             toHelp(app, '    Minimum sensor wear time per day            = 18  % consider 12 hours if sensors are not worn at night');
-            toHelp(app, '    Minimum number of valid days for activities = 2   % minimum number of days required with sufficient wear time');
-            toHelp(app, '    Minimum number of valid days for lying      = 3   % idem for showing "lying" information');
+            toHelp(app, '    Minimum number of valid days for activities = 2   % minimum number of days with sufficient wear time to show activity info');
+            toHelp(app, '    Minimum number of valid days for lying      = 3   % idem for showing "lying" info');
             toHelp(app, '');
             toHelp(app, '% Measures that can be requested through the parameter file:');
             toHelp(app, '    Walking Speed                = yes'); 
@@ -1149,10 +1160,9 @@ classdef gaitAnalysis < matlab.apps.AppBase
             toHelp(app, '    Index Harmonicity*           = yes'); 
             toHelp(app, '    Power At Step Freq*          = yes'); 
             toHelp(app, '    Gait Quality Composite Score = yes'); 
-            toHelp(app, '    Bimodal Fit Walking Speed**  = yes'); 
+            toHelp(app, '    Bimodal Fit Walking Speed**  = yes  % does not always converge to the exact same solution'); 
             toHelp(app, '    Preferred Walking Speed      = 0.96 % corresponding percentile will be reported');
-            toHelp(app, '    % *Add VT, ML, or AP to request individual directions.');   
-            toHelp(app, '    % **Does not always converge to the exact same solution.');
+            toHelp(app, '    % *Add VT, ML, or AP to request individual directions, e.g, RMS VT');   
             toHelp(app, '');          
             changeTab(app, event, app.tab_help);
         end

@@ -17,7 +17,7 @@ RMLGuess = cross([0;0;1],RVT); RMLGuess = RMLGuess/norm(RMLGuess);
 RAPGuess = cross(RVT,RMLGuess); RAPGuess = RAPGuess/norm(RAPGuess);
 
 %% Estimate stride frequency
-StrideFrequency = StrideFrequencyFrom3dAccBosbaan(Acc, FS);
+[StrideFrequency, ~] = StrideFrequencyFrom3dAcc(Acc, FS);
 AccDetrend = detrend(Acc,'constant');
 N = size(AccDetrend,1);
 
@@ -118,11 +118,12 @@ Minus_HR_Prod = @(x) -real(...
                /(EvenHarmonics'*abs(DFTMLG+x*DFTAPG))...
                *(EvenHarmonics'*abs(-x*DFTMLG+DFTAPG))...
                /(OddHarmonics'*abs(-x*DFTMLG+DFTAPG)));
-[xopt1,Minus_HR_Prod_opt1,exitflag1]=fminsearch(Minus_HR_Prod,xeg);
+options = optimset('Display','off');
+[xopt1,Minus_HR_Prod_opt1,exitflag1]=fminsearch(Minus_HR_Prod,xeg, options);
 if exitflag1 == 0 && abs(xopt1) > 100 % optimum for theta beyond +- pi/2
     [xopt1a,Minus_HR_Prod_opt1a,exitflag1a]=fminsearch(Minus_HR_Prod,-xopt1);
     if ~(exitflag1a == 0 && abs(xopt1a) > 100)
-        xopt1org = xopt1;
+        % xopt1org = xopt1;
         xopt1 = xopt1a;
         Minus_HR_Prod_opt1 = Minus_HR_Prod_opt1a;
     end
@@ -154,7 +155,7 @@ if nargin > 2 && plotje
     Xs = tan(Thetas);
     HR_Prod = nan(size(Xs));
     HRMLs = nan(size(Xs));
-    for i=1:numel(Xs),
+    for i=1:numel(Xs)
         HR_Prod(i,1) = -Minus_HR_Prod(Xs(i));
         HRMLs(i,1) = HRML(Xs(i));
     end

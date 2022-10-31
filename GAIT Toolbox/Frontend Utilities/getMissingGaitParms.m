@@ -3,14 +3,14 @@ function [params, error] = getMissingGaitParms(old_params)
 %  help utility for gaitAnalyse (undocumented)
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: May 2022, kaass@fbw.vu.nl
+% Last updated: Oct 2022, kaass@fbw.vu.nl
 
 global guiApp
 
 st = dbstack;
-fcnName = st.name;
-str = sprintf ("Enter %s().\n", fcnName);
-prLog(str, fcnName);
+fncName = st.name;
+str = sprintf ("Enter %s().\n", fncName);
+prLog(str, fncName);
 
 if exist('guiApp', 'var') && ~isempty(guiApp) && ~isnumeric(guiApp)
     idOut = guiApp;
@@ -34,13 +34,13 @@ if ~isfield(params, 'classFile')
         if ~file
             str = sprintf('\n*** Error: No classification file (*.csv) selected. ***\n');
             fprintf (idOut, str);
-            prLog (str, fcnName);
+            prLog (str, fncName);
             return;
         end
     else
         str = sprintf('\n*** Error: No classification file (*.csv) specified. ***\n');
         fprintf (idOut, str);
-        prLog (str, fcnName);
+        prLog (str, fncName);
         return;
     end
     params.classFile = [dir file];
@@ -53,13 +53,13 @@ if ~isfield(params, 'accFile')
         if ~file
             str = sprintf('\n*** Error: No raw measurement file (*.3ac or *.omx) selected. ***\n');
             fprintf (idOut, str);
-            prLog (str, fcnName);           
+            prLog (str, fncName);           
             return;
         end
     else    
         str = sprintf('\n*** Error: No raw measurement file (*.3ac or *.omx) specified. ***\n');
         fprintf (idOut, str);
-        prLog (str, fcnName);
+        prLog (str, fncName);
         return;
     end
     params.accFile = [dir file];
@@ -73,7 +73,7 @@ if ~isfield(params, 'legLength')
     if ~isfield(params, 'legLength') || isempty(params.legLength)
         str = sprintf('\n*** Error: No leg length given! ***\n');
         fprintf (idOut, str);
-        prLog (str, fcnName);
+        prLog (str, fncName);
         return;
     end
 end
@@ -84,6 +84,10 @@ if ~isfield(params, 'epochLength')
     params.epochLength = 10;
 end
 
+if ~isfield(params, 'cutoffFrequency')
+    params.cutoffFrequency = 0.5;
+end
+
 if ~isfield(params, 'skipStartSeconds')
     params.skipStartSeconds = 0;
 end
@@ -92,7 +96,7 @@ if isfield(params, 'percentiles')
     if size(params.percentiles) ~= 3
         str = sprintf('\n*** Error: Percentiles should be an array of length 3! ***\n');
         fprintf (idOut, str);
-        prLog (str, fcnName);        
+        prLog (str, fncName);        
         return;
     end   
 else
@@ -117,8 +121,8 @@ if ~isnumeric(idOut)
     idOut.pError = false;
 end
 
-str = sprintf ("Leave %s().\n", fcnName);
-prLog(str, fcnName);
+str = sprintf ("Leave %s().\n", fncName);
+prLog(str, fncName);
 
 end
 

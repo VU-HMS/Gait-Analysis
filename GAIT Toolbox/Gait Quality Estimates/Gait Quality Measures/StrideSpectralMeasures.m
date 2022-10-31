@@ -10,6 +10,7 @@ function MeasuresStruct = StrideSpectralMeasures(MeasuresStruct, AccData, FS)
 %
 %% Output
 % MeasuresStruct.StrideFrequency
+% MeasuresStruct.StrideTimeSeconds
 % MeasuresStruct.LowFrequentPercentage
 % MeasuresStruct.IndexHarmonicity
 % MeasuresStruct.FrequencyVariability
@@ -27,29 +28,24 @@ function MeasuresStruct = StrideSpectralMeasures(MeasuresStruct, AccData, FS)
 % 2021-12 (YZG/RC): Modified the code into function
 % 2022-01 (RC):     Modified inputs/outputs and above help section
 % 2022-01 (RC):     Commented out SmoothPahse = sgolayfilt (was not used)
+% 2022-10 (RC/PvD): Remove calculation of power spectral density (get if
+%                   from StrideFrequencyFrom3dAcc).
 
-WindowLen = size(AccData,1);
 N_Harm = 20; % number of harmonics used for harmonic ratio, index of harmonicity and phase fluctuation
 LowFrequentPowerThresholds = [0.7 1.4]; % Threshold frequencies for estimation of low-frequent power percentages
 
-
-%%
-AccLocDetrend = detrend(AccData);
-AccVectorLen = sqrt(sum(AccLocDetrend(:,1:3).^2,2));
-P=zeros(0,size(AccLocDetrend,2));
-for i=1:size(AccLocDetrend,2)
-    [P1,~] = pwelch(AccLocDetrend(:,i),hamming(WindowLen),[],WindowLen,FS);
-    [P2,F] = pwelch(AccLocDetrend(end:-1:1,i),hamming(WindowLen),[],WindowLen,FS);
-    P(1:numel(P1),i) = (P1+P2)/2;
-end
-dF = F(2)-F(1);
+AccLocDetrend = detrend(AccData, 'constant');
+AccVectorLen  = sqrt(sum(AccLocDetrend(:,1:3).^2,2));
 
 % Calculate stride frequency
-[StrideFrequency, ~] = StrideFrequencyFrom3dAccBosbaan(P, F);
+[StrideFrequency, P, F, ~] = StrideFrequencyFrom3dAcc(AccData, FS); 
 MeasuresStruct.StrideFrequency = StrideFrequency;
+MeasuresStruct.StrideTimeSeconds = 1/StrideFrequency;
+
 
 % Add sum of power spectra (as a rotation-invariant spectrum)
-P = [P,sum(P,2)];
+dF = F(2)-F(1);
+P  = [P,sum(P,2)];
 PS = sqrt(P);
 
 % Calculate the measures for the power per separate dimension

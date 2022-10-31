@@ -1,5 +1,5 @@
-function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Realigned, LegLength, StrideTimeSamples)
-%% function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Realigned, LegLength, StrideTimeSamples)
+function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Realigned, LegLength, CutoffFreq)
+%% function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Realigned, LegLength, CutoffFreq)
 %
 % Measures from height variation by double integration of VT accelerations and high-pass filtering
 % Zijlstra & Hof 2003, Assessment of spatio-temporal gait parameters from trunk accelerations
@@ -9,15 +9,17 @@ function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Rea
 % MeasuresStruct:    Structure to which the output is added
 % AccData:           Acceleration data
 % FS:                Sample frequency
-% Realigned:         If false, AccData will be realigned; if true, AccData is assumed
-%                    to be realigned already
+% Realigned:         If false, AccData will be realigned; if true, AccData 
+%                    is assumed to be realigned already
 % LegLength:         Leg length (unit:m)
-% StrideTimeSamples: A parameter from StrideTimesMeasures.m
+% CutoffFreq:        Cutoff frequency for high pass Butterworth filter 
+%                    (used to counteract integration drift)
+% 
 %
 %% Output
 % MeasuresStruct.Distance,
 % MeasuresStruct.WalkingSpeedMean
-% MeasuresStruct.StepLengthMean
+% MeasuresStruct.StepLengthMean (depricated) -> MeasuresStruct.StrideLengthMean
 % MeasuresStruct.StrideTimeVariabilityBestEvent 
 % MeasuresStruct.StrideSpeedVariabilityBestEvent
 % MeasuresStruct.StrideLengthVariability 
@@ -28,11 +30,23 @@ function MeasuresStruct = StrideSpatialMeasures(MeasuresStruct, AccData, FS, Rea
 %% History:
 % 2021-12 (YZG/RC): Modified the code into function
 % 2022-01 (RC):     Modified inputs/outputs and above help section
+% 2022-10 (RC):     1) Allow cutoff frequency of Butterworth filter to be 
+%                   passed as a parameter.
+%                   2) Correct StepLengthMean to StrideLengthMean
+%                   3) Bug fix in StrideTimeVariabilityOmitMinMax (divide
+%                      by FS to get time in seconds)
+
 
 %% parameters
-IgnoreMinMaxStrides = 0.10;  % number or percentage of highest&lowest values ignored for imrpoved variability estimation
-Cutoff = 0.1;
-MinDist = floor(0.7*0.5*StrideTimeSamples);  
+IgnoreMinMaxStrides = 0.10;  % fraction of highest&lowest values ignored for improved variability estimation
+if nargin < 6
+    Cutoff = 0.1;
+else
+    Cutoff = max(0.01, CutoffFreq);
+    Cutoff = min(0.99, Cutoff);
+end
+StrideTimeSamples = round(FS/MeasuresStruct.StrideFrequency);
+MinDist = floor(0.7*0.5*StrideTimeSamples);
 
 %% Integrate, filter and select vertical component
 [bz,az] = butter(2,20/(FS/2),'low');
@@ -123,18 +137,19 @@ for i=1:4
     WSS(i) = std(StrideSpeeds(i:4:end));
 end
 
-MeasuresStruct.StepLengthMean=mean(StrideLengths);
-
+MeasuresStruct.StrideLengthMean=mean(StrideLengths);
 MeasuresStruct.StrideTimeVariabilityBestEvent = min(STS);
 MeasuresStruct.StrideSpeedVariabilityBestEvent = min(WSS);
 MeasuresStruct.StrideLengthVariability = std(StrideLengths);
+
 % Estimate Stride time variability and stride speed variability by removing highest and lowest part
 if ~isinteger(IgnoreMinMaxStrides)
     IgnoreMinMaxStrides = ceil(IgnoreMinMaxStrides*size(StrideTimes,1));
 end
 StrideTimesSorted = sort(StrideTimes);
-MeasuresStruct.StrideTimeVariabilityOmitMinMax = std(StrideTimesSorted(1+IgnoreMinMaxStrides:end-IgnoreMinMaxStrides));
+MeasuresStruct.StrideTimeVariabilityOmitMinMax = std(StrideTimesSorted(1+IgnoreMinMaxStrides:end-IgnoreMinMaxStrides))/FS;
 StrideSpeedSorted = sort(StrideSpeeds);
 MeasuresStruct.StrideSpeedVariabilityOmitMinMax = std(StrideSpeedSorted(1+IgnoreMinMaxStrides:end-IgnoreMinMaxStrides));
 StrideLengthsSorted = sort(StrideLengths);
 MeasuresStruct.StrideLengthVariabilityOmitMinMax = std(StrideLengthsSorted(1+IgnoreMinMaxStrides:end-IgnoreMinMaxStrides));
+

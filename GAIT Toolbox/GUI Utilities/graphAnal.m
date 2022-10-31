@@ -1,4 +1,9 @@
 function [result] = graphAnal(filenameMeasures, filenameAggregated)
+%% function [abort] = graphAnal(filenameMeasures, filenameAggregated)
+%  undocumented (used in GUI App to preprocess graphs
+
+%% 2020, kaass@fbw.vu.nl 
+% Last updated: Oct 2022, kaass@fbw.vu.nl
 
 if ~exist('locomotionMeasures', 'var')
     load(filenameMeasures, 'locomotionMeasures', 'epochLength');
@@ -24,7 +29,7 @@ for i=1:nEpochs
     idx(i)            = locomotionMeasures(i).absoluteStartIndex;
     speed(i)          = locomotionMeasures(i).Measures.WalkingSpeedMean;
     strideDuration(i) = locomotionMeasures(i).Measures.StrideTimeSeconds;
-    strideLength(i)   = locomotionMeasures(i).Measures.StepLengthMean;
+    strideLength(i)   = locomotionMeasures(i).Measures.StrideLengthMean;
     if i > startConsecutiveEpochs
         if time(i) <= locomotionMeasures(startConsecutiveEpochs).relativeStartTime
             time(i) = time(i) + ((idx(i)-idx(startConsecutiveEpochs))/locomotionMeasures(i).sampleRate) * days2seconds;

@@ -116,13 +116,15 @@ To omit writing JSON files, use:
 EXAMPLE OF A PARAMETER FILE
                 
 % Parameter settings:
-    Classification file  = ?.csv               % mandatory!
-    Raw measurement file = ?.OMX               % mandatory!
-    Leg length = 0.925                         % mandatory!**
-    Epoch length = 10                          % defaults to 10***
-    Hours to skip at start of measurement = 6  % defaults to 0; hours may be
-                                               % replaced by seconds or minutes
-    Percentiles = [10 50 90]                   % defaults to [20 50 80]*
+    Classification file  = ?.csv                % mandatory
+    Raw measurement file = ?.OMX                % mandatory
+    Leg length** = 0.925                        % mandatory
+    Epoch length*** = 10                        % defaults to 10
+    Cutoff frequency** = 0.5                    % defaults to 0.5 (used in Butterworth
+                                                % filter to counteract integration drift)
+    Hours to skip at start of measurement* = 6  % defaults to 0; hours may be
+                                                % replaced by seconds or minutes
+    Percentiles* = [10 50 90]                   % defaults to [20 50 80]
     % ***changing requires recalculation of locomotion episodes, locomotion
     %    measures, and aggregated values
     %  **changing requires recalculation of locomotion measures and aggregated
@@ -138,18 +140,17 @@ EXAMPLE OF A PARAMETER FILE
 % Measures that can be requested through the parameter file:
     Walking Speed                = yes
     Stride Length                = yes
-    Stride Regularity            = yes  % or use Stride Regularity X*
-    Sample Entropy               = yes  % or use Sample Entropy X*
-    RMS                          = yes  % or use RMS X*
-    Index Harmonicity            = yes  % or use Index Harmonicity X*
-    Power At Step Freq           = yes  % or use Power At Step Freq X*
+    Stride Regularity*           = yes
+    Sample Entropy*              = yes
+    RMS*                         = yes
+    Index Harmonicity*           = yes
+    Power At Step Freq*          = yes
     Gait Quality Composite Score = yes
     Bimodal Fit Walking Speed    = yes  % does not always converge to the exact
                                         % same solution
     Preferred Walking Speed      = 0.96 % corresponding percentile will be
                                         % reported 
-    % *For X use VT, ML, or AP to request individual directions, e.g., Stride
-    %  Regularity VT.
+    % *Add VT, ML, or AP to request individual directions, e.g., RMS VT.
  
 
 REFERENCES
@@ -211,5 +212,5 @@ CONTRIBUTORS
 Many people have contributed to the GAIT toolbox, including programmers, 
 PhD students and scientific staff members. Among others, these include (in
 alphabetical order): Peter Beek, Sjoerd Bruijn, Richard Casius, 
-Andreas Daffertshofer, Jaap van Dieën, Mirjam Pijnappels, Markus Rieger, 
-Sietse Rispens, Kim van Schooten, Roel Weijer and Yuge Zhang.
+Andreas Daffertshofer, Jaap van Dieën, Pieter van Doorn, Mirjam Pijnappels, 
+Markus Rieger, Sietse Rispens, Kim van Schooten, Roel Weijer and Yuge Zhang.
