@@ -32,6 +32,9 @@ Folder "GAIT Toolbox/Gait Quality Estimates/" contains most of the algorithms.
 Folder "GAIT Toolbox/Get Aggregate Values/" contains utilities to collect the
 calculated values.
 
+Folder "GAIT Toolbox/Output Utilities/" contains some utilities for the 
+main function gaitAnalyse() to save the results in different output formats.
+
 Folder "GAIT Toolbox/GUI utilities" contains utilities used by the graphical
 tool as well as some utilities to redirect console output to the grahical tool
 (warning: editing these files can easily break the graphical tool).
@@ -66,8 +69,12 @@ function gaitAnalyse (parametersFile, [OPTIONS])
 %                       2  include debug info
 %
 %   'saveToJSON'        true   in addtion to MATLAB- and textformat, write 
-%                              results in JSON-format (default)
-%                       false  do not write JSON files
+%                              results in JSON-format 
+%                       false  do not write JSON files (default)
+%
+%   'saveToSPSS'        true   in addtion to MATLAB- and textformat, write 
+%                              results in SPSS-format 
+%                       false  do not write SPSS files (default
 %
 %   'overwriteFiles'    0  never overwrite existing files (default)
 %                       1  overwrite aggregated values, but do use saved 
@@ -83,7 +90,9 @@ function gaitAnalyse (parametersFile, [OPTIONS])
 %   Note: - default value for above three options is false, mimicking
 %           'overwriteFiles', 0
 %         - if 'overwriteFiles' is specified, above three options are
-%           ignored.
+%           ignored
+%         - saveToJSON and saveToSPSS, if specified, overrule the 
+%           settings in paramatersFile
 
 
 EXAMPLES
@@ -109,9 +118,9 @@ file have been changed), use either:
 If less output is desired, use:
    gaitAnalyse("DATA/GaitParams.txt", 'verbosityLevel', 0)
 
-To omit writing JSON files, use:
+To suppress writing JSON files, use:
    gaitAnalyse("DATA/GaitParams.txt", 'saveToJSON', false)
-
+(or specify "Save to SPSS = no" in the parameter file; see below)
 
 EXAMPLE OF A PARAMETER FILE
                 
@@ -152,6 +161,10 @@ EXAMPLE OF A PARAMETER FILE
                                         % reported 
     % *Add VT, ML, or AP to request individual directions, e.g., RMS VT.
  
+% Output format of the above measures (in addition to text and MATLAB)
+   Save to JSON                  = yes  % default = yes
+   Save to SPSS                  = yes  % default = no
+
 
 REFERENCES
 

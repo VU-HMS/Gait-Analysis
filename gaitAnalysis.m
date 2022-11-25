@@ -64,7 +64,7 @@ classdef gaitAnalysis < matlab.apps.AppBase
 
         
     properties (Access = private)
-        versionTxt = 'Gait Analysis 3.4 - Interface to the VU-HMS Gait Toolbox';
+        versionTxt = 'Gait Analysis 3.4.1 - Interface to the VU-HMS Gait Toolbox';
         batchFile = 'GaitBatch.mat';
         timeStamp = 0;
         parmsError = false;
@@ -1163,6 +1163,10 @@ classdef gaitAnalysis < matlab.apps.AppBase
             toHelp(app, '    Bimodal Fit Walking Speed**  = yes  % does not always converge to the exact same solution'); 
             toHelp(app, '    Preferred Walking Speed      = 0.96 % corresponding percentile will be reported');
             toHelp(app, '    % *Add VT, ML, or AP to request individual directions, e.g, RMS VT');   
+            toHelp(app, '');
+            toHelp(app, '% Output format of the above measures (in addition to text and MATLAB):');
+            toHelp(app, '    Save to JSON                 = yes  % default = yes'); 
+            toHelp(app, '    Save to SPSS                 = yes  % default = no');
             toHelp(app, '');          
             changeTab(app, event, app.tab_help);
         end

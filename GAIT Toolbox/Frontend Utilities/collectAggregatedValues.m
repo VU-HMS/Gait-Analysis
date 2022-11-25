@@ -157,21 +157,31 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
     n = length(locomotionMeasures);
     testDays = NaT;
     idxDays = NaN;
+    startMeasurement = locomotionMeasures(1).absoluteStartTimeEpoch - locomotionMeasures(1).relativeStartTime;
+    start = datetime(startMeasurement, 'ConvertFrom', 'datenum', 'Format', 'yyyy-MM-dd HH:mm:ss');
+    day1  = datetime([start.Year, start.Month, start.Day], 'InputFormat','yyyy-MM-dd');
     j = 1;
     for i = 1 : n        
-        date = datetime(locomotionMeasures(i).absoluteStartTimeEpoch,'ConvertFrom','datenum');
-        day  = datetime([date.Year, date.Month, date.Day] ,'InputFormat','yyyy-MM-dd');
+        date = datetime(locomotionMeasures(i).absoluteStartTimeEpoch, 'ConvertFrom', 'datenum');
+        day  = datetime([date.Year, date.Month, date.Day], 'InputFormat', 'yyyy-MM-dd');
         if i==1
-            testDays(1) = day;
-            idxDays(1,1)  = 1;
-        elseif day ~= testDays(j)
-            h = day - testDays(j);
-            while (hours(h)>24)
+            diffDays = day - day1;
+            while (hours(diffDays)>=24) 
+                testDays(j) = day1 + (j-1)*days(1);
+                idxDays(j,1:2) = -1;
+                diffDays = diffDays - days(1);
+                j=j+1;
+            end
+            testDays(j)  = day;
+            idxDays(j,1) = 1;
+         elseif day ~= testDays(j)
+            diffDays = day - testDays(j);
+            while (hours(diffDays)>24)
                idxDays(j,2) = i-1;
                j=j+1;
                idxDays(j,1) = -1;           
-               testDays(j) = testDays(j-1) + hours(24);
-               h = h-hours(24);
+               testDays(j) = testDays(j-1) + days(1);
+               diffDays = diffDays - days(1);
             end
             idxDays(j,2) = i-1;
             j=j+1;

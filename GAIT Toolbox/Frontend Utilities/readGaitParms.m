@@ -60,6 +60,8 @@ params.calcPowerAtStepFreqAP         = false;
 params.calcGaitQualityCompositeScore = false;
 params.calcBimodalFitWalkingSpeed    = false;
 params.calcPercentilePWS             = false;
+params.saveToSPSS                    = false;
+params.saveToJSON                    = true;
 
 params.getPhysicalActivityFromClassification = getActivity;
 params.minSensorWearTime             = 18; % in hours
@@ -209,6 +211,10 @@ for i=1:n
        else
            params.minValidDaysActivities = str2double(value);
        end
+   elseif Contains(name, 'save') && Contains(name, 'json')
+       params.saveToJSON = bool;
+   elseif Contains(name, 'save') && Contains(name, 'spss')
+       params.saveToSPSS = bool;
    else
        if ~silent
           if ~isnumeric(idOut)    

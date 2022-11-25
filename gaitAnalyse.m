@@ -18,8 +18,12 @@ function gaitAnalyse(parametersFile, varargin)
 %                       2  include debug info
 %
 %   'saveToJSON'        true   in addtion to MATLAB- and textformat, write 
-%                              results in JSON-format (default)
-%                       false  do not write JSON files
+%                              results in JSON-format 
+%                       false  do not write JSON files (default)
+%
+%   'saveToSPSS'        true   in addtion to MATLAB- and textformat, write 
+%                              results in SPSS-format 
+%                       false  do not write SPSS files (default)
 %
 %   'overwriteFiles'    0  never overwrite existing files (default)
 %                       1  overwrite aggregated values, but do use saved 
@@ -35,7 +39,9 @@ function gaitAnalyse(parametersFile, varargin)
 %   Note: - default value for above three options is false, mimicking
 %           'overwriteFiles', 0
 %         - if 'overrideFiles' is specified, above three options are
-%           ignored.
+%           ignored
+%         - saveToJSON and saveToSPSS, if specified, overrule the 
+%           settings in paramatersFile
 %
 %  EXAMPLES
 %
@@ -68,7 +74,7 @@ function gaitAnalyse(parametersFile, varargin)
 %                  print statements should go
 
 %% 2021, kaass@fbw.vu.nl
-% Last updated: June 2022, kaass@fbw.vu.nl
+% Last updated: Nov 2022, kaass@fbw.vu.nl
 
 %% process input arguments
 global guiApp abortPrinted
@@ -86,15 +92,15 @@ addParameter(p, 'overwriteAggregatedValues', false, @islogical);
 addParameter(p, 'overwriteFiles',            0,     validOverrideLevel);
 addParameter(p, 'verbosityLevel',            1,     validVerbosityLevel);
 addParameter(p, 'analyzeTime',               false, @islogical);
-addParameter(p, 'saveToJSON',                true,  @islogical);
+addParameter(p, 'saveToJSON',                false, @islogical);
+addParameter(p, 'saveToSPSS',                false, @islogical);
 addParameter(p, 'class',                     0,     @isobject);
-parse(p,varargin{:});
+parse(p,varargin{:})
 
 app = p.Results.class;
 overwriteFiles = p.Results.overwriteFiles;
 verbosityLevel = p.Results.verbosityLevel;
-analyzeTime = p.Results.analyzeTime;
-saveToJSON = p.Results.saveToJSON;
+analyzeTime    = p.Results.analyzeTime;
 
 guiApp = [];
 abortPrinted = false;
@@ -186,6 +192,14 @@ if error
     return;
 end
 
+
+if ~ismember('saveToJSON', p.UsingDefaults)
+    params.saveToJSON = p.Results.saveToJSON; % command line overrules
+end
+
+if ~ismember('saveToSPSS', p.UsingDefaults)
+    params.saveToSPSS = p.Results.saveToSPSS; % command line overrules
+end
 
 %% construct file names and show the gait paramters that will be used
 prLog("Construct file names.\n", fncName);
@@ -311,7 +325,7 @@ end
 if ~exist('locomotionEpisodes', 'var') || isempty(locomotionEpisodes)
     prLog("Unable to compute measures: no locomotion episodes found.\n", fncName);
     fprintf(idOut, "Unable to compute measures: no locomotion episodes found.\n\n");
-    if saveToJSON 
+    if params.saveToJSON
         emptyJSON(filepath, name, params);
     end
     abortAnalysis(isGUI, idOut, fncName);
@@ -332,11 +346,11 @@ if ~exist(fileNameMeasures, 'file') || (overwriteFiles >= 2)
     if checkAbortFromGui() 
         return;
     end
-    startTime = locomotionEpisodes(1).absoluteStartTime - locomotionEpisodes(1).relativeStartTime;
-    startDay = datetime(startTime,'ConvertFrom','datenum','Format','yyyy-MM-dd HH:mm:ss');
+    startMeasurement = locomotionEpisodes(1).absoluteStartTime - locomotionEpisodes(1).relativeStartTime;
+    startDateTime = datetime(startMeasurement,'ConvertFrom','datenum','Format','yyyy-MM-dd HH:mm:ss');
     j=0;
     for i=1:length(locomotionMeasures)
-        startEpisode = startDay + days(locomotionMeasures(i).relativeStartTime);
+        startEpisode = startDateTime + days(locomotionMeasures(i).relativeStartTime);
         if (i>1) && (locomotionMeasures(i).relativeStartTime == locomotionMeasures(i-1).relativeStartTime)
             j=j+1;
         else
@@ -359,7 +373,7 @@ if length(locomotionMeasures) < 50
     str = sprintf('Only %d epochs of at least %d seconds found (cannot reliably calculate the aggregated measures).\n', length(locomotionMeasures), params.epochLength);
     fprintf(idOut, str);
     fprintf(idOut, "");
-    if saveToJSON 
+    if params.saveToJSON 
         emptyJSON(filepath, name, params);
     end
     abortAnalysis(isGUI, idOut, fncName);
@@ -433,6 +447,8 @@ if checkAbortFromGui()
     return;
 end
 
+
+%% save desired aggregated measures
 prLog("Save desired measures.\n", fncName);
 if isempty(measures) && ~bmf && ~ppws
     str = sprintf(idOut, 'No measures specified in %s.\n', parametersFile);
@@ -542,8 +558,8 @@ else
     fclose(fid);
       
     % save to json
-    prLog("Save desired measures to json file(s).\n", fncName);
-    if saveToJSON
+    if params.saveToJSON
+       prLog("Save desired measures to json file(s).\n", fncName);
        fileNameResultsJSON = [filepath '/' name '_GA_Results' '.json'];
        toJSON(fileNameResultsJSON, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws);
        for n=1:nDays
@@ -554,6 +570,23 @@ else
                      bimodalFitWalkingSpeedPerDay(n), percentiles, percentilePWSPerDay(n), bmf, ppws);
           else 
               toJSON(fileNameResultsJSON, [], legLength, [], percentiles, [], bmf, ppws);
+          end
+       end
+    end
+  
+    % save to SPSS
+    if params.saveToSPSS
+       prLog("Save desired measures to spss file(s).\n", fncName); 
+       fileNameResultsSPSS = [filepath '/' name '_GA_Results' '.csv'];
+       toSPSS(fileNameResultsSPSS, measures, bimodalFitWalkingSpeed,...
+              percentiles, percentilePWS, bmf, ppws);
+       for n=1:nDays
+          nStr = sprintf ('%02d', n);
+          fileNameResultsSPSS = [filepath '/' name '_GA_Results_Day' nStr '.csv'];
+          if ~isempty(measuresPerDay(n)) && ~isempty(measuresPerDay(n).WalkingSpeed)
+              toSPSS(fileNameResultsSPSS, measuresPerDay(n), ...
+                     bimodalFitWalkingSpeedPerDay(n), percentiles, ...
+                     percentilePWSPerDay(n), bmf, ppws);
           end
        end
     end
@@ -590,124 +623,6 @@ function emptyJSON(filepath, filename, params)
     ppws = isfield(params, 'calcPercentilePWS') && params.calcPercentilePWS;
     toJSON(fileNameResultsJSON, [], params.legLength, [], params.percentiles, [], bmf, ppws);
 end
-
-
-function toJSON(fileName, measures, legLength, bimodalFitWalkingSpeed, percentiles, percentilePWS, bmf, ppws)
-
-%% start json
-fp = fopen(fileName, 'w');
-fprintf(fp, '{\n');
-none="null";
-
-%% parameters
-fprintf(fp, '\t"description": "Spatio temporal parameters",\n');
-fprintf(fp, '\t"metadata": [\n');
-fprintf(fp, '\t\t{"label": "Percentiles", "unit": "None", "values": {"1st": %d, "2nd": %d, "3rd": %d}},\n',...
-             percentiles(1), percentiles(2), percentiles(3));
-fprintf(fp, '\t\t{"label": "LegLength", "unit": "m", "values": %.3f}\n',...
-             legLength);
-fprintf(fp, '\t],\n');
-
-%% general measures
-if ~isempty(measures)
-    fn = fieldnames(measures);
-else
-    fn = {'WalkingSpeed', 'StrideLength', 'SampleEntropy_VT',...
-          'SampleEntropy_ML', 'SampleEntropy_AP', 'StrideRegularity_VT',...
-          'RMS_ML', 'IndexHarmonicity_ML', 'PowerAtStepFreq_AP',...
-          'GaitQualityCompositeScore'};
-end
-
-fprintf(fp, '\t"GeneralMeasures": [\n');
-for i=1:numel(fn)
-    if Contains(fn{i}, "speed")
-        unit = "m/s";
-    elseif Contains(fn{i}, "length")
-        unit = "m";
-    else
-        unit = "None";
-    end
-    if ~isempty(measures)
-        fprintf(fp, '\t\t{"label": "%s", "unit": "%s", "values": {"%s": %.3f, "%s": %.3f, "%s": %.3f}}',...
-                char(fn(i)), unit,...
-                "PCTL1", measures.(fn{i})(1),...
-                "PCTL2", measures.(fn{i})(2),...
-                "PCTL3", measures.(fn{i})(3));
-    else
-        fprintf(fp, '\t\t{"label": "%s", "unit": "%s", "values": {"%s": %s, "%s": %s, "%s": %s}}',...
-                char(fn(i)), unit,...
-                "PCTL1", none, "PCTL2", none, "PCTL3", none);
-    end
-    if i<numel(fn)
-        fprintf (fp, ',');
-    end
-    fprintf(fp, '\n');
-end
-fprintf(fp, '\t],');
-%     if bmf || ppws
-%         fprintf(fp, ',');
-%     end
-fprintf(fp, '\n');
-
-
-%% bimodal fit
-if bmf
-    if ~isempty(bimodalFitWalkingSpeed)
-        fprintf(fp, '\t"BimodalFitWalkingSpeed": [\n');
-        fprintf(fp, '\t\t{"label": "Ashman_D", "unit": "None", "values": %.3f},\n',...
-                bimodalFitWalkingSpeed.Ashman_D);
-        fprintf(fp, '\t\t{"label": "PeakDensity", "unit": "None", "values": {"1st": %.3f, "2nd": %.3f}},\n',...
-                bimodalFitWalkingSpeed.peakDensity(1), bimodalFitWalkingSpeed.peakDensity(2));
-        fprintf(fp, '\t\t{"label": "PeakSpeed", "unit": "m/s", "values": {"1st": %.3f, "2nd": %.3f}}\n',...
-                bimodalFitWalkingSpeed.peakSpeed(1), bimodalFitWalkingSpeed.peakSpeed(2));
-        fprintf(fp, '\t],');
-    else
-        fprintf(fp, '\t"BimodalFitWalkingSpeed": [\n');
-        fprintf(fp, '\t\t{"label": "Ashman_D", "unit": "None", "values": %s},\n', none);
-        fprintf(fp, '\t\t{"label": "PeakDensity", "unit": "None", "values": {"1st": %s, "2nd": %s}},\n',...
-                    none, none);
-        fprintf(fp, '\t\t{"label": "PeakSpeed", "unit": "m/s", "values": {"1st": %s, "2nd": %s}}\n',...
-                    none, none);
-        fprintf(fp, '\t],');
-    end
-%     if ppws
-%         fprintf(fp, ',');
-%     end
-    fprintf(fp, '\n');
-end
-
-%% percentile of preferred walking speed
-if ppws
-    fprintf(fp, '\t"PercentilePreferredWalkingSpeed": [\n');
-    if ~isempty(percentilePWS)
-        fprintf(fp, '\t\t{"label": "PercentilePWS", "unit": "None", "values": %.2f}\n',...
-                percentilePWS);
-    else
-        fprintf(fp, '\t\t{"label": "PercentilePWS", "unit": "None", "values": %s}\n', none);
-    end
-    fprintf(fp, '\t]\n');
-end
-
-%% end json
-fprintf(fp, "}");
-fclose (fp);
-
-end % toJSON
-
-
-function bool = Contains (str, pattern)
-
-if exist('contains', 'builtin')
-    bool = contains(str, pattern, 'IgnoreCase', true);
-else
-    if iscell(str)
-        bool = ~isempty(strfind(upper(str{1}), upper(pattern)));  
-    else
-        bool = ~isempty(strfind(upper(str), upper(pattern)));   
-    end
-end
-
-end % function Contains
 
 
 function str = bool2str(b)
