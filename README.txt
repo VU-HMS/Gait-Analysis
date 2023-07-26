@@ -1,4 +1,5 @@
-GAIT Toolbox (DOI: https://zenodo.org/badge/latestdoi/459598159)
+GAIT Toolbox (DOI: https://zenodo.org/record/8187922)
+
 
 The GAIT toolbox is a collection of MATLAB routines to estimate gait measures
 from raw acceleration data. Many people (and articles) have contributed to the
