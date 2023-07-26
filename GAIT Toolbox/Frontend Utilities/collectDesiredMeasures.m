@@ -14,11 +14,14 @@ showNames = false; % for debugging
 
 WalkingSpeedIdx     = [];
 StrideLengthIdx     = [];
+StrideFrequencyIdx  = [];
 SampleEntropyIdx    = [];
 StrideRegularityIdx = [];
 IndexHarmonicityIdx = [];
 RMSIdx              = [];
 PowerAtStepFreqIdx  = [];
+HarmonicRatioIdx    = [];
+LyapunovWIdx        = [];
 
 measures=[];
 
@@ -31,6 +34,8 @@ for i=1:size(aggMeasureNames)-4
         WalkingSpeedIdx = [WalkingSpeedIdx i];
     elseif Contains(aggMeasureNames{i}, 'StrideLengthMean') || Contains(aggMeasureNames{i},'StepLengthMean')
         StrideLengthIdx = [StrideLengthIdx i];
+    elseif Contains(aggMeasureNames{i}, 'StrideFrequency')
+        StrideFrequencyIdx = [StrideFrequencyIdx i];
     elseif Contains(aggMeasureNames{i}, 'SampleEntropy')
         SampleEntropyIdx = [SampleEntropyIdx i];
     elseif Contains(aggMeasureNames{i}, 'StrideRegularity')
@@ -41,6 +46,10 @@ for i=1:size(aggMeasureNames)-4
         RMSIdx = [RMSIdx i];
     elseif Contains(aggMeasureNames{i}, 'WeissAmp')
         PowerAtStepFreqIdx = [PowerAtStepFreqIdx i];
+    elseif Contains(aggMeasureNames{i}, 'HarmonicRatio') && ~Contains(aggMeasureNames{i}, 'HarmonicRatioP')
+        HarmonicRatioIdx = [HarmonicRatioIdx i];
+    elseif Contains(aggMeasureNames{i}, 'LyapunovW')
+        LyapunovWIdx = [LyapunovWIdx i];
     end
 end
 
@@ -50,6 +59,9 @@ if isfield(params, 'calcWalkingSpeed') && params.calcWalkingSpeed
 end
 if isfield(params, 'calcStrideLength') && params.calcStrideLength
     measures.StrideLength = aggregateInfo(StrideLengthIdx,:);
+end
+if isfield(params, 'calcStrideFrequency') && params.calcStrideFrequency
+    measures.StrideFrequency = aggregateInfo(StrideFrequencyIdx,:);
 end
 if isfield(params, 'calcSampleEntropyVT') && params.calcSampleEntropyVT
     measures.SampleEntropy_VT = aggregateInfo(SampleEntropyIdx(VT),:);
@@ -106,6 +118,20 @@ if isfield(params, 'calcPowerAtStepFreqAP') && params.calcPowerAtStepFreqAP
         measures.PowerAtStepFreq_AP = aggregateInfo(PowerAtStepFreqIdx(AP+4),:);
     else
         measures.PowerAtStepFreq_AP = aggregateInfo(PowerAtStepFreqIdx(AP),:);
+    end
+end
+if isfield(params, 'calcHarmonicRatioVT') && params.calcHarmonicRatioVT
+    measures.HarmonicRatio_VT = aggregateInfo(HarmonicRatioIdx(VT),:);
+end
+if isfield(params, 'calcHarmonicRatioML') && params.calcHarmonicRatioML
+    measures.HarmonicRatio_ML = aggregateInfo(HarmonicRatioIdx(ML),:);
+end
+if isfield(params, 'calcHarmonicRatioAP') && params.calcHarmonicRatioAP
+    measures.HarmonicRatio_AP = aggregateInfo(HarmonicRatioIdx(AP),:);
+end
+if isfield(params, 'calcLyapunovEstimate') && params.calcLyapunovEstimate
+    if (length(LyapunovWIdx) > 3) 
+        measures.LyapunovEstimate = aggregateInfo(LyapunovWIdx(4), :);
     end
 end
 

@@ -28,7 +28,7 @@ function MeasuresStruct = StrideSpectralMeasures(MeasuresStruct, AccData, FS)
 % 2021-12 (YZG/RC): Modified the code into function
 % 2022-01 (RC):     Modified inputs/outputs and above help section
 % 2022-01 (RC):     Commented out SmoothPahse = sgolayfilt (was not used)
-% 2022-10 (RC/PvD): Remove calculation of power spectral density (get if
+% 2022-10 (RC/PvD): Remove calculation of power spectral density (get it
 %                   from StrideFrequencyFrom3dAcc).
 
 N_Harm = 20; % number of harmonics used for harmonic ratio, index of harmonicity and phase fluctuation

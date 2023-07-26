@@ -218,6 +218,7 @@ if isfield(locomotionMeasures, 'absoluteStartTimeEpoch')
         
         speed = measuresStruct.Measures.WalkingSpeedMean(dayFlags)';
         if length(speed) >= functionArguments.N
+            warning('off', 'stats:gmdistribution:FailedToConvergeReps');
             gm =  fitgmdist(speed, 2, 'Start', 'plus', 'Replicates', 100, 'RegularizationValue', 0.0001, 'Options', statset('MaxIter', 1000));
             % Determine Ashman's D according to: Aspeshman, K. M., Bird, C. M., & Zepf, S. E. (1994). Detecting bimodality in astronomical datasets. arXiv preprint astro-ph/9408030.
             bimodalFitWalkingSpeedPerDay(i).Ashman_D = abs(diff(gm.mu)) ./ sqrt(sum(gm.Sigma)./2); % difference in means divided by pooled SD - essentially a z-test... Note that sigma = SD^2

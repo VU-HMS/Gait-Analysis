@@ -20,7 +20,7 @@ function [locomotionEpisodes, fileInfo] = extractGaitEpisodes(fileNameClassList,
 %   fileInfo (struct): Information about the raw data
 
 %% 2021, kaass@fbw.vu.nl 
-% Last updated: Oct 2022, kaass@fbw.vu.nl
+% Last updated: Mei 2023, kaass@fbw.vu.nl
 
 %% set to true if OMX_readFile() version is 2019 or up
 newOMXReadFileVersion = true; 
@@ -121,6 +121,17 @@ else
     locomotionEpisodes(len) = episodeStruct;
     n = 0;
    
+    firstSample = datenum(startWalking(1)) + datenum(0,0,0,0,0,1);
+    lastSample  = datenum(startWalking(len)) + datenum(0,0,0,0,0,durationWalking(len)) - datenum(0,0,0,0,0,1);
+    
+    if (firstSample < startTime || lastSample > stopTime)
+        str = sprintf("Time stamp mismatch; classification file and data file probably don't agree.\n");
+        fprintf (idOut, str); 
+        prLog (str, fncName);
+        locomotionEpisodes = [];
+        return;
+    end
+       
     for iWalk = 1:len
         
         n=n+1;
@@ -157,7 +168,7 @@ else
             locomotionEpisodes = [];
             return;
         end
-        
+
         % get signal
         try
             data = OMX_readFile(fileNameMeasurementData,'modality', modality,...

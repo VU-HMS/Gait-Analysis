@@ -42,6 +42,7 @@ params.percentiles                   = [20 50 80];
 params.cutoffFrequency               = 0.5;
 params.calcWalkingSpeed              = false;
 params.calcStrideLength              = false;
+params.calcStrideFrequency           = false;
 params.calcStrideRegularityVT        = false;
 params.calcStrideRegularityML        = false;
 params.calcStrideRegularityAP        = false;
@@ -57,6 +58,10 @@ params.calcIndexHarmonicityAP        = false;
 params.calcPowerAtStepFreqVT         = false;
 params.calcPowerAtStepFreqML         = false;
 params.calcPowerAtStepFreqAP         = false;
+params.calcHarmonicRatioVT           = false;
+params.calcHarmonicRatioML           = false;
+params.calcHarmonicRatioAP           = false;
+params.calcLyapunovEstimate          = false;
 params.calcGaitQualityCompositeScore = false;
 params.calcBimodalFitWalkingSpeed    = false;
 params.calcPercentilePWS             = false;
@@ -147,6 +152,8 @@ for i=1:n
        params.calcWalkingSpeed = bool;
    elseif Contains(name, 'Stride') && Contains(name, 'Len')
        params.calcStrideLength = bool;
+   elseif Contains(name, 'Stride') && Contains(name, 'Freq')
+       params.calcStrideFrequency = bool;
    elseif Contains(name, 'Stride') && Contains(name, 'Reg') && Contains(name, 'VT')
        params.calcStrideRegularityVT = bool;
    elseif Contains(name, 'Stride') && Contains(name, 'Reg') && Contains(name, 'ML')
@@ -177,16 +184,26 @@ for i=1:n
        params.calcRMSVT = bool;
        params.calcRMSML = bool;
        params.calcRMSAP = bool;
-   elseif Contains(name, 'Harmon') && Contains(name, 'VT')
+   elseif Contains(name, 'Harmonicity') && Contains(name, 'VT')
        params.calcIndexHarmonicityVT = bool;
-   elseif Contains(name, 'Harmon') && Contains(name, 'ML')
+   elseif Contains(name, 'Harmonicity') && Contains(name, 'ML')
        params.calcIndexHarmonicityML = bool;
-   elseif Contains(name, 'Harmon') && Contains(name, 'AP')
+   elseif Contains(name, 'Harmonicity') && Contains(name, 'AP')
        params.calcIndexHarmonicityAP = bool;
-   elseif Contains(name, 'Harmon')
+   elseif Contains(name, 'Harmonicity')
        params.calcIndexHarmonicityVT = bool;
        params.calcIndexHarmonicityML = bool;
        params.calcIndexHarmonicityAP = bool;
+   elseif Contains(name, 'Harmonic') && Contains(name, 'Ratio') && Contains(name, 'VT')
+       params.calcHarmonicRatioVT = bool;
+   elseif Contains(name, 'Harmonic') && Contains(name, 'Ratio') && Contains(name, 'ML')
+       params.calcHarmonicRatioML = bool;
+   elseif Contains(name, 'Harmonic') && Contains(name, 'Ratio') && Contains(name, 'AP')
+       params.calcHarmonicRatioAP = bool;
+   elseif Contains(name, 'Harmonic') && Contains(name, 'Ratio')
+       params.calcHarmonicRatioVT = bool;
+       params.calcHarmonicRatioML = bool;
+       params.calcHarmonicRatioAP = bool;
    elseif ((Contains(name, 'Power') && Contains(name, 'Freq')) || (Contains(name,'Weiss') && Contains(name,'Amp'))) && Contains(name, 'VT') 
        params.calcPowerAtStepFreqVT = bool;
    elseif ((Contains(name, 'Power') && Contains(name, 'Freq')) || (Contains(name,'Weiss') && Contains(name,'Amp'))) && Contains(name, 'ML')
@@ -197,6 +214,8 @@ for i=1:n
        params.calcPowerAtStepFreqVT = bool;
        params.calcPowerAtStepFreqML = bool;
        params.calcPowerAtStepFreqAP = bool;
+   elseif (Contains(name, 'Lya') && Contains(name, 'Est')) 
+       params.calcLyapunovEstimate = bool;
    elseif Contains(name, 'Quality') || Contains(name, 'Composite')
        params.calcGaitQualityCompositeScore = bool;
    elseif Contains(name, 'Bimodal') 
